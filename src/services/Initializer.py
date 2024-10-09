@@ -1,4 +1,4 @@
-from QRCodeDetection.QrCodeScanner import QrCodeScanner
+from .QRCodeDetection.QrCodeScanner import QrCodeScanner
 
-def initialize(vision_toolkit):
-    QrCodeScanner(vision_toolkit)
+def initialize(camera: str):
+    QrCodeScanner(camera)
