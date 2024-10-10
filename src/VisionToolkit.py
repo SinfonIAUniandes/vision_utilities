@@ -28,7 +28,7 @@ class VisionToolkit:
             self.is_ros_available = False
 
         if self.is_ros_available and constants.VISION_TOOLS_SERVICE in available_services:
-            rospy.wait_for_service()
+            rospy.wait_for_service("/robot_toolkit/vision_tools_srv")
         else:
             subprocess.Popen("roscore")
             time.sleep(1)
