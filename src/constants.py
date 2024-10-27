@@ -15,4 +15,4 @@ FRONT_CAMERA_NAME = "front_camera"
 
 # Provided Services
 
-SERVICE_NAME_READ_QR = "vision_utilities/recognition/read_qr_srv"
+SERVICE_NAME_READ_QR = "/vision_utilities/recognition/read_qr_srv"
