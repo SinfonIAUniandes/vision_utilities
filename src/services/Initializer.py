@@ -1,4 +1,5 @@
-from .QRCodeDetection.QrCodeScanner import QrCodeScanner
+from .qrcode_detection.QrCodeScanner import QrCodeScanner
+from ..config import VisionConfiguration
 
-def initialize(camera: str):
+def initialize(camera: str, config: VisionConfiguration):
     QrCodeScanner(camera)

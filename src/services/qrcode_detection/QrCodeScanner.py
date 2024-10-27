@@ -5,6 +5,7 @@ from perception_msgs.srv import read_qr_srv, read_qr_srvRequest
 from sensor_msgs.msg import Image
 from robot_toolkit_msgs.msg import vision_tools_msg
 from robot_toolkit_msgs.srv import vision_tools_srv
+import constants
 
 import cv2
 from cv_bridge import CvBridge
@@ -15,21 +16,21 @@ class QrCodeScanner:
 
 
     def __init__(self, camera: str):
-        rospy.Service("vision_utilities/read_qr_srv", read_qr_srv, self.callback)
+        rospy.Service(constants.SERVICE_NAME_READ_QR, read_qr_srv, self.callback)
         rospy.Subscriber(camera, Image, self.camera_subscriber)
         self.start_perception_message()
 
     def start_perception_message(self):
         #Start front Camera
-        visionMessage = vision_tools_msg()
-        visionMessage.camera_name = "front_camera"
-        visionMessage.command = "custom"
-        visionMessage.resolution = 1
-        visionMessage.frame_rate = 20
-        visionMessage.color_space = 11
-        self.visionToolsService(visionMessage)
+        vision_message = vision_tools_msg()
+        vision_message.camera_name = constants.FRONT_CAMERA_NAME
+        vision_message.command = "custom"
+        vision_message.resolution = 1
+        vision_message.frame_rate = 20
+        vision_message.color_space = 11
+        self.vision_tools_service(vision_message)
 
-    def visionToolsService(self,msg):
+    def vision_tools_service(self,msg):
         """
         Enables the vision Tools service from the toolkit of the robot.
         """

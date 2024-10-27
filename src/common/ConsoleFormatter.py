@@ -11,16 +11,13 @@ class ConsoleFormatter:
     END = "\033[0m"
     WARNING = "\033[93m"
     OKBLUE = "\033[94m"
+    ERROR = "\033[91m"
 
 
     def __init__(self):
         self.colors={
         "HEADER":'\033[95m',
-        "OKBLUE": '\033[94m',
-        "OKGREEN": '\033[92m',
-        "WARNING": '\033[93m',
-        "FAIL": '\033[91m',
-        "ENDC": '\033[0m'}
+        }
         
     def format(self, text, format):
         """
@@ -52,3 +49,7 @@ class ConsoleFormatter:
     @staticmethod
     def okblue(text: str) -> str:
         return f"{ConsoleFormatter.OKBLUE}{text}{ConsoleFormatter.END}"
+    
+    @staticmethod
+    def error(text: str) -> str:
+        return f"{ConsoleFormatter.ERROR}{text}{ConsoleFormatter.END}"
