@@ -10,10 +10,10 @@ import constants
 import cv2
 from cv_bridge import CvBridge
 
+
 class QrCodeScanner:
     bridge = CvBridge()
     image = None
-
 
     def __init__(self, camera: str):
         rospy.Service(constants.SERVICE_NAME_READ_QR, read_qr_srv, self.callback)
