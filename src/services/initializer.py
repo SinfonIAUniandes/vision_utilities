@@ -1,6 +1,7 @@
 import rospy
 
 from .qrcode_detection.QrCodeScanner import QrCodeScanner
+from .chess_detection.ChessDetection import ChessDetection
 from config import VisionModuleConfiguration
 from common import ConsoleFormatter
 
@@ -15,7 +16,7 @@ def init_cameras():
 
 
 def start_perception_message():
-    #Start front Camera
+    # Start front Camera
     vision_message = vision_tools_msg()
     vision_message.camera_name = constants.FRONT_CAMERA_NAME
     vision_message.command = "custom"
@@ -36,7 +37,7 @@ def vision_tools_service(msg):
         vision(msg)
         print(ConsoleFormatter.okblue("Vision tools service connected!"))
     except rospy.ServiceException as e:
-            print(ConsoleFormatter.error("Vision call failed"))
+        print(ConsoleFormatter.error("Vision call failed"))
 
 
 def initialize(camera: str, config: VisionModuleConfiguration):
@@ -44,3 +45,4 @@ def initialize(camera: str, config: VisionModuleConfiguration):
         init_cameras()
 
     QrCodeScanner(camera)
+    ChessDetection(camera)

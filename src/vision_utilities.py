@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python
 import rospy
 import rosservice
 
@@ -21,7 +21,10 @@ class VisionToolkit:
     def __init__(self, config: VisionModuleConfiguration) -> None:
         self.config = config
 
-        if self.config.with_pepper and constants.VISION_TOOLS_SERVICE in rosservice.get_service_list():
+        if (
+            self.config.with_pepper
+            and constants.VISION_TOOLS_SERVICE in rosservice.get_service_list()
+        ):
             rospy.wait_for_service(constants.VISION_TOOLS_SERVICE)
         else:
             self.main_camera = constants.LOCAL_FRONT_CAMERA
