@@ -1,6 +1,7 @@
+from common import models_manager
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from perception_msgs.srv import FaceLandmarkDetection, FaceLandmarkDetectionResponse
+from perception_msgs.srv import FaceLandmarkDetectionRequest, FaceLandmarkDetectionResponse, FaceLandmarkDetection
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.core.base_options import BaseOptions
@@ -15,12 +16,14 @@ import constants
 class FaceLandmarkService:
     bridge = CvBridge()
     image = None
+    active = False
 
     def __init__(self, camera: str):
-        self.model_asset_path = Path("/home/emilio/Documents/Sinfonia/Face_Recognition/face_landmarker_v2_with_blendshapes.task")
+        self.active = False
+        self.model_asset_path = models_manager.get_mediapipe_path("face_landmarker")
         self.detector = self.initialize_face_landmarker()
         self.image_pub = rospy.Publisher(constants.TOPIC_FACE_LANDMARKS, Image, queue_size=10)
-        self.service = rospy.Service(constants.SERVICE_DETECT_FACE_LANDMARKS,FaceLandmarkDetection , self.handle_face_landmark_detection)
+        self.service = rospy.Service(constants.SERVICE_DETECT_FACE_LANDMARKS, FaceLandmarkDetection, self.handle_face_landmark_detection)
         rospy.Subscriber(camera, Image, self.camera_subscriber)
 
     def initialize_face_landmarker(self):
@@ -79,10 +82,12 @@ class FaceLandmarkService:
     def camera_subscriber(self, msg: Image):
         self.image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 
-    def handle_face_landmark_detection(self, req):
+        if not self.active:
+            return
+
         if self.image is None:
             rospy.logerr("No image received from camera.")
-            return FaceLandmarkDetectionResponse(annotated_image=Image())
+            return
 
         rgb_frame = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
@@ -90,4 +95,13 @@ class FaceLandmarkService:
         annotated_image = self.draw_landmarks_on_image(rgb_frame, detection_result)
         annotated_image_msg = self.bridge.cv2_to_imgmsg(cv2.cvtColor(annotated_image, cv2.COLOR_RGB2BGR), encoding="bgr8")
         self.image_pub.publish(annotated_image_msg)
-        return FaceLandmarkDetectionResponse(annotated_image=annotated_image_msg)
+
+    def handle_face_landmark_detection(self, req: FaceLandmarkDetectionRequest):
+        response = FaceLandmarkDetectionResponse()
+        if req.state == "active":
+            self.active = True
+        else:
+            self.active = False
+            
+        response.state = "Active:" + str(self.active)
+        return response

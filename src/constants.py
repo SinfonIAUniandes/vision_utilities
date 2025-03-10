@@ -1,5 +1,8 @@
 # Ros NODE Configuration
 
+from pathlib import Path
+
+
 NODE_NAME = "vision_utilities"
 
 # Used services
@@ -8,7 +11,7 @@ VISION_TOOLS_SERVICE = "/robot_toolkit/vision_tools_srv"
 
 # Models data
 
-MODELS_FOLDER = "./models/"
+MODELS_FOLDER = Path(__file__).parent / "../models"
 
 # Cameras
 
