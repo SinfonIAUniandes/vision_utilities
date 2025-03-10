@@ -1,13 +1,16 @@
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from perception_msgs.srv import FaceLandmarkDetection, FaceLandmarkDetectionResponse  # Update import
+from perception_msgs.srv import FaceLandmarkDetection, FaceLandmarkDetectionResponse
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks.python import vision
+from mediapipe.tasks.python.core.base_options import BaseOptions
+from mediapipe.tasks.python.vision import FaceLandmarker, FaceLandmarkerOptions
 from pathlib import Path
 import rospy
 import cv2
 import mediapipe as mp
 import numpy as np
+import constants
 
 class FaceLandmarkService:
     bridge = CvBridge()
@@ -16,19 +19,18 @@ class FaceLandmarkService:
     def __init__(self, camera: str):
         self.model_asset_path = Path("/home/emilio/Documents/Sinfonia/Face_Recognition/face_landmarker_v2_with_blendshapes.task")
         self.detector = self.initialize_face_landmarker()
-        self.image_pub = rospy.Publisher("face_landmarks_image", Image, queue_size=10)
-        self.service = rospy.Service('face_landmark_detection', FaceLandmarkDetection, self.handle_face_landmark_detection)
+        self.image_pub = rospy.Publisher(constants.TOPIC_FACE_LANDMARKS, Image, queue_size=10)
+        self.service = rospy.Service(constants.SERVICE_DETECT_FACE_LANDMARKS,FaceLandmarkDetection , self.handle_face_landmark_detection)
         rospy.Subscriber(camera, Image, self.camera_subscriber)
 
     def initialize_face_landmarker(self):
-        base_options = vision.BaseOptions(model_asset_path=str(self.model_asset_path))
-        options = vision.FaceLandmarkerOptions(
-            base_options=base_options,
+        options = FaceLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=str(self.model_asset_path)),
             output_face_blendshapes=True,
             output_facial_transformation_matrixes=True,
             num_faces=5,
         )
-        return vision.FaceLandmarker.create_from_options(options)
+        return FaceLandmarker.create_from_options(options)
 
     def draw_landmarks_on_image(self, rgb_image, detection_result):
         drawing_styles = mp.solutions.drawing_styles
