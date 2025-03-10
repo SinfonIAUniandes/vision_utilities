@@ -2,6 +2,7 @@ import rospy
 
 from .qrcode_detection.QrCodeScanner import QrCodeScanner
 from .chess_detection.ChessDetection import ChessDetection
+from .mediapipe.face_landmark_service import FaceLandmarkService
 from config import VisionModuleConfiguration
 from common import ConsoleFormatter
 
@@ -46,3 +47,4 @@ def initialize(camera: str, config: VisionModuleConfiguration):
 
     QrCodeScanner(camera)
     ChessDetection(camera)
+    FaceLandmarkService(camera)

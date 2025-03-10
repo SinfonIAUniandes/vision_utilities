@@ -204,3 +204,25 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+find_package(catkin REQUIRED COMPONENTS
+  rospy
+  sensor_msgs
+  cv_bridge
+  message_generation
+  perception_msgs
+)
+
+add_service_files(
+  FILES
+  FaceLandmarkDetection.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  sensor_msgs
+)
+
+catkin_package(
+  CATKIN_DEPENDS message_runtime rospy sensor_msgs cv_bridge perception_msgs
+)
