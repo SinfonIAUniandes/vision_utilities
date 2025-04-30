@@ -8,165 +8,140 @@ from deap import base, creator, tools, algorithms
 from common import models_manager
 
 
-class GeneticTrapezoid:
-    def __init__(self, mask: MatLike):
-        self.mask = mask
-        contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        main_contour = max(contours, key=cv2.contourArea)  # Assume the largest contour is the main one
+class GeneticBoard:
+    def __init__(self, mask: np.ndarray):
+        self.mask = mask.astype(np.uint8) * 255
+        self.width = mask.shape[1]
+        self.height = mask.shape[0]
+        self.pop_size = 35
+        self.num_generations = 120
+        self.cxpb = 0.7
+        self.mutpb = 0.3
+        self.ind_size = 8
 
-        # Get convex hull
-        hull = cv2.convexHull(main_contour).flatten().tolist()
-        hull = np.array([[hull[i], hull[i + 1]] for i in range(0, len(hull), 2)], dtype=np.int32)
-
-        # --- Find the largest quadrilateral within the convex hull ---
-        def largest_quadrilateral(hull):
-            """Finds the quadrilateral with the largest area within the convex hull."""
-            max_area = 0
-            best_quad = None
-
-            for i in range(len(hull)):
-                for j in range(i + 1, len(hull)):
-                    for k in range(j + 1, len(hull)):
-                        for l in range(k + 1, len(hull)):
-                            quad = np.array([hull[i], hull[j], hull[k], hull[l]])
-                            area = cv2.contourArea(quad)
-                            if area > max_area:
-                                max_area = area
-                                best_quad = quad
-            return best_quad
-
-        self.initial_trapezoid = largest_quadrilateral(hull)
-
-    def find_trapezoid(
-            self, 
-            population_size = 25,
-            generations = 100,
-            crossover_prob = 0.9,
-            mutation_prob = 0.3,
-            num_elites = 2,
-        ) -> List[Tuple[int]]:
         creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
         creator.create("Individual", list, fitness=creator.FitnessMin)
 
-        toolbox = base.Toolbox()
+        self.toolbox = base.Toolbox()
+        self.toolbox.register(
+            "individual",
+            tools.initIterate,
+            creator.Individual,
+            self.generate_individual,
+        )
+        self.toolbox.register(
+            "population", tools.initRepeat, list, self.toolbox.individual
+        )
+        self.toolbox.register("evaluate", self.evaluate)
+        self.toolbox.register("mate", tools.cxTwoPoint)
+        self.toolbox.register(
+            "mutate",
+            tools.mutUniformInt,
+            low=0,
+            up=max(self.width, self.height),
+            indpb=0.1,
+        )
+        self.toolbox.register("select", tools.selTournament, tournsize=3)
 
-        def generate_individual():
-            """Generates an individual: 4 (x, y) coordinates from the largest quadrilateral."""
-            return creator.Individual(self.initial_trapezoid.tolist())
+    def generate_individual(self):
+        return [0] * self.ind_size
 
-        toolbox.register("individual", generate_individual)
-        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+    def create_quadrilateral_mask(self, individual):
+        mask = np.zeros((self.height, self.width), dtype=np.uint8)
+        points = np.array(
+            [(individual[i], individual[i + 1]) for i in range(0, self.ind_size, 2)],
+            dtype=np.int32,
+        )
+        cv2.fillPoly(mask, [points], 255)
+        return mask
 
-        # --- Evaluation Function ---
-        def evaluate(individual):
-            """Evaluates the fitness of an individual (quadrilateral)."""
-            polygon = np.array(individual, dtype=np.int32)
+    def cost_function(self, individual):
+        quad_mask = self.create_quadrilateral_mask(individual)
+        xor_result = cv2.bitwise_xor(quad_mask, self.mask)
+        return (np.count_nonzero(xor_result),)
 
-            # Initialize the polygon mask with zeros, same shape as `mask`
-            polygon_mask = np.zeros_like(self.mask, dtype=np.uint8)
-            cv2.fillPoly(polygon_mask, [polygon], 255)
+    def evaluate(self, individual):
+        return self.cost_function(individual)
 
-            # XOR and count non-zero pixels
-            xor_result = cv2.bitwise_xor(self.mask, polygon_mask)
+    def find_initial_corners(self):
+        edges = cv2.Canny(self.mask, 50, 150, apertureSize=3)
+        lines = cv2.HoughLines(edges, 1, np.pi / 180, 200)
+        intersections = []
+        if lines is not None:
+            for i in range(len(lines)):
+                for j in range(i + 1, len(lines)):
+                    rho1, theta1 = lines[i][0]
+                    rho2, theta2 = lines[j][0]
+                    A = np.array(
+                        [
+                            [np.cos(theta1), np.sin(theta1)],
+                            [np.cos(theta2), np.sin(theta2)],
+                        ]
+                    )
+                    b = np.array([[rho1], [rho2]])
+                    try:
+                        x0, y0 = np.linalg.solve(A, b)
+                        x0, y0 = int(np.round(x0)), int(np.round(y0))
+                        if 0 <= x0 <= self.width and 0 <= y0 <= self.height:
+                            intersections.append((x0, y0))
+                    except np.linalg.LinAlgError:
+                        pass
+        corners = []
+        corners_float = cv2.cornerHarris(self.mask, blockSize=2, ksize=3, k=0.04)
+        corners_float = cv2.dilate(corners_float, None)
+        ret, corners_float = cv2.threshold(
+            corners_float, 0.01 * corners_float.max(), 255, 0
+        )
+        corners_float = np.uint8(corners_float)
+        ret, labels, stats, centroids = cv2.connectedComponentsWithStats(corners_float)
+        if centroids is not None:
+            for centroid in centroids:
+                x, y = int(centroid[0]), int(centroid[1])
+                corners.append((x, y))
+        corners.extend(intersections)
+        return corners
 
-            cv2.imshow("INTENTO", polygon_mask)
-            cv2.imshow("MODELO", self.mask)
-            cv2.imshow("RESULTADO", xor_result)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+    def initialize_population(self):
+        corners = self.find_initial_corners()
+        population = []
+        for _ in range(self.pop_size):
+            if len(corners) >= 4:
+                selected_corners = random.sample(corners, 4)
+                individual = [coord for point in selected_corners for coord in point]
+                population.append(creator.Individual(individual))
+            else:
+                population.append(creator.Individual(self.generate_individual()))
+        return population
 
-            score = cv2.countNonZero(xor_result) / (self.mask.shape[0] * self.mask.shape[1])
+    def run_ga(self):
+        pop = self.initialize_population()
+        hof = tools.HallOfFame(1)
+        stats = tools.Statistics(lambda ind: ind.fitness.values)
+        stats.register("avg", np.mean)
+        stats.register("min", np.min)
+        stats.register("max", np.max)
+        pop, logbook = algorithms.eaMuPlusLambda(
+            pop,
+            self.toolbox,
+            mu=self.pop_size,
+            lambda_=self.pop_size * 2,
+            cxpb=self.cxpb,
+            mutpb=self.mutpb,
+            ngen=self.num_generations,
+            stats=stats,
+            halloffame=hof,
+            verbose=False,
+        )
+        return hof[0]
 
-            return score,
+    def get_best_coordinates(self):
+        best_individual = self.run_ga()
+        return [
+            (best_individual[i], best_individual[i + 1])
+            for i in range(0, self.ind_size, 2)
+        ]
 
-        toolbox.register("evaluate", evaluate)
 
-        # --- Crossover (Single-Point) ---
-        def cxSinglePoint(ind1, ind2):
-            """Executes a single-point crossover on the coordinates of the individuals."""
-            cxpoint = random.randint(1, len(ind1) - 1)
-            ind1[cxpoint:], ind2[cxpoint:] = ind2[cxpoint:].copy(), ind1[cxpoint:].copy()
-            return ind1, ind2
-
-        toolbox.register("mate", cxSinglePoint)
-
-        # --- Mutation (Adaptive) ---
-        def mutAdaptive(individual, indpb, generation, max_generations):
-            """Mutates an individual with adaptive mutation strength."""
-            # Decrease mutation strength over time
-            max_mutation = 50  # Initial maximum displacement
-            min_mutation = 5   # Final minimum displacement
-            mutation_range = max_mutation - (max_mutation - min_mutation) * (generation / max_generations)
-
-            for i in range(len(individual)):
-                if random.random() < indpb:
-                    dx = random.randint(-int(mutation_range), int(mutation_range))
-                    dy = random.randint(-int(mutation_range), int(mutation_range))
-
-                    individual[i][0] = max(0, min(self.mask.shape[1], individual[i][0] + dx))
-                    individual[i][1] = max(0, min(self.mask.shape[0], individual[i][1] + dy))
-
-            return individual,
-
-        toolbox.register("mutate", mutAdaptive, indpb=0.7)
-
-        # --- Selection ---
-        toolbox.register("select", tools.selTournament, tournsize=3)
-
-        def best_polygon():
-            pop = toolbox.population(n=population_size)
-            hof = tools.HallOfFame(num_elites)
-
-            # Evaluate the initial population
-            fitnesses = list(map(toolbox.evaluate, pop))
-            for ind, fit in zip(pop, fitnesses):
-                ind.fitness.values = fit
-
-            # Run the genetic algorithm
-            for g in range(generations):
-                # Select the next generation
-                offspring = toolbox.select(pop, len(pop) - num_elites)
-                # Clone the selected individuals
-                offspring = list(map(toolbox.clone, offspring))
-
-                # Apply crossover
-                for child1, child2 in zip(offspring[::2], offspring[1::2]):
-                    if random.random() < crossover_prob:
-                        toolbox.mate(child1, child2)
-                        del child1.fitness.values
-                        del child2.fitness.values
-
-                # Apply mutation
-                for mutant in offspring:
-                    if random.random() < mutation_prob:
-                        toolbox.mutate(mutant, generation=g, max_generations=generations)
-                        del mutant.fitness.values
-
-                # Evaluate individuals with invalid fitness
-                invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-                fitnesses = map(toolbox.evaluate, invalid_ind)
-                for ind, fit in zip(invalid_ind, fitnesses):
-                    ind.fitness.values = fit
-
-                # Add elite individuals to the offspring
-                offspring.extend(hof.items)
-
-                # Update the HallOfFame
-                hof.update(pop)
-
-                # Replace the old population with the new offspring
-                pop[:] = offspring
-
-                # Gather statistics
-                fits = [ind.fitness.values[0] for ind in pop]
-
-            # Get the best individual
-            best_ind = hof[0]
-
-            return best_ind, (1 - best_ind.fitness.values[0])
-        
-        return best_polygon()
-    
 def get_corners(image: np.ndarray) -> List[int]:
     model = models_manager.get_yolo_model("chess_board")
 
@@ -177,7 +152,7 @@ def get_corners(image: np.ndarray) -> List[int]:
 
     cv2.imshow("m", mask)
 
-    coords_estimator = GeneticTrapezoid(mask)
-    best_coords = coords_estimator.find_trapezoid()
+    coords_estimator = GeneticBoard(mask)
+    best_coords = coords_estimator.get_best_coordinates()
 
     return np.array(best_coords).flatten().tolist()

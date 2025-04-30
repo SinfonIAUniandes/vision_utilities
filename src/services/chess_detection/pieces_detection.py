@@ -1,39 +1,14 @@
-import rospy
-import time
-
-from perception_msgs.srv import read_qr_srv, read_qr_srvRequest
-from sensor_msgs.msg import Image
-from robot_toolkit_msgs.msg import vision_tools_msg
-from robot_toolkit_msgs.srv import vision_tools_srv
-from config import VisionModuleConfiguration
-import constants
-
-import cv2
-from cv_bridge import CvBridge
+from typing import List
+import numpy as np
+from cv2.typing import MatLike
+import random
+from ultralytics.engine.results import Results
+from common import models_manager
 
 
-class QrCodeScanner:
-    bridge = CvBridge()
-    image = None
+def get_predictions(image: MatLike):
+    model = models_manager.get_yolo_model("chess_pieces")
 
-    def __init__(self, camera: str):
-        rospy.Service(constants.SERVICE_READ_QR, read_qr_srv, self.callback)
-        rospy.Subscriber(camera, Image, self.camera_subscriber)
+    results: List[Results] = model.predict(source=image, save=False, device="cpu")
 
-    def camera_subscriber(self, msg: Image):
-        self.image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-
-    def callback(self, request: read_qr_srvRequest):
-        start = time.time()
-
-        while time.time() - start < request.timeout:
-            try:
-                detector = cv2.QRCodeDetector()
-
-                value, _, _ = detector.detectAndDecode(self.image)
-
-                if value != "":
-                    return value
-            except:
-                continue
-        return ""
+    results[0].save("resultado.jpg")
