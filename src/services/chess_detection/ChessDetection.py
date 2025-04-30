@@ -32,6 +32,9 @@ class ChessDetection:
         response = detect_chess_srvResponse()
         response.board = []
         response.pieces = []
+        response.fen = ""
+
+
         start = time.time()
         to_process = self.image
 
@@ -52,16 +55,8 @@ class ChessDetection:
         print("Took %.2fs" % (end_time - start_time))
 
         response.board = board_corners
-
-        pieces_detection.get_predictions(to_process)
-
-        cv2.circle(to_process, (board_corners[0], board_corners[1]), 10, (0, 0, 255), 4)
-        cv2.circle(to_process, (board_corners[2], board_corners[3]), 10, (0, 0, 255), 4)
-        cv2.circle(to_process, (board_corners[4], board_corners[5]), 10, (0, 0, 255), 4)
-        cv2.circle(to_process, (board_corners[6], board_corners[7]), 10, (0, 0, 255), 4)
         
-        cv2.imshow("mask_gen", to_process)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        pieces = pieces_detection.get_predictions(to_process)
+
 
         return response
