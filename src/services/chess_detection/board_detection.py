@@ -150,9 +150,7 @@ def get_corners(image: np.ndarray) -> List[int]:
     mask = results[0].masks.data[0].cpu().numpy()
     mask = cv2.resize(mask, (image.shape[1], image.shape[0]))
 
-    cv2.imshow("m", mask)
-
     coords_estimator = GeneticBoard(mask)
     best_coords = coords_estimator.get_best_coordinates()
 
-    return np.array(best_coords).flatten().tolist()
+    return np.array(best_coords)

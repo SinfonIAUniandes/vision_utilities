@@ -13,6 +13,7 @@ import constants
 import cv2
 from cv_bridge import CvBridge
 import time
+import numpy as np
 
 from services.chess_detection import board_detection, pieces_detection
 
@@ -38,7 +39,7 @@ class ChessDetection:
         start = time.time()
         to_process = self.image
 
-        while time.time() - start < request.timeout:
+        while time.time() - start < 2:
             if self.image is not None:
                 to_process = self.image
                 break
@@ -50,11 +51,57 @@ class ChessDetection:
         start_time = time.time()
 
         board_corners = board_detection.get_corners(to_process)
+        response.board = board_corners.flatten().tolist()
+
+        board_corners = np.array(board_corners)
+        print(board_corners)
+
+        def reorder_corners(pts):
+            centroid = np.mean(pts, axis=0)
+
+            ordered_pts = sorted(pts, key=lambda p: (np.arctan2(p[1] - centroid[1], p[0] - centroid[0])))
+            return np.array(ordered_pts, dtype=np.int32)
+        
+        board_corners = reorder_corners(board_corners)
+
+        target_perspective = np.array([[40, 40], [600, 40], [600, 600], [40, 600]])
+
+        transformer = cv2.getPerspectiveTransform(target_perspective.astype(np.float32), board_corners.astype(np.float32))
+
+        cells = { }
+
+        letters = ["a", "b", "c", "d", "e", "f", "g", "h"]
+
+        margin = 40
+        width = 640 - margin * 2
+        gap = width / 8
+
+        for i in range(8):
+            for j in range(8):
+                id = f"{letters[i]}{j + 1}"
+
+
+                x = margin + gap * i
+                y = margin + gap * j
+
+
+                cells[id] = [
+                    [x, y],
+                    [x, y + gap],
+                    [x + gap, y + gap],
+                    [x + gap, y]
+                ]
+
+
+        for cell, poly in cells.items():
+            poly = np.array([poly], dtype=np.float32)
+            poly = cv2.perspectiveTransform(poly, transformer).tolist()
+            poly = [list(map(round, p)) for p in poly[0]]
+            #cv2.polylines(frame, [np.array(poly, dtype=np.int32)], True, palette[0], 2)
+            cells[cell] = poly
 
         end_time = time.time()
         print("Took %.2fs" % (end_time - start_time))
-
-        response.board = board_corners
         
         pieces_result = pieces_detection.get_predictions(to_process)
 
@@ -89,7 +136,7 @@ class ChessDetection:
 
             base_at = y + h - w
 
-            if cv2.pointPolygonTest(np.array([corners]), (x, base_at), False) < 0:
+            if cv2.pointPolygonTest(np.array([board_corners]), (x, base_at), False) < 0:
                 color = (255, 0, 0)
             elif confidence[i] < 0.4:
                 color = (0, 0, 255)
@@ -105,8 +152,6 @@ class ChessDetection:
                     if pieces_by_cell.get(cell) is None:
                         pieces_by_cell[cell] = []
                     pieces_by_cell[cell].append((piece_name, confidence[i]))
-            
-            cv2.polylines(frame, [np.array([[x - w, y - h], [x - w, y + h], [x + w, y + h], [x + w, y - h]])], True, color, thickness=2)
 
         for cell, pieces in pieces_by_cell.items():
             pieces_by_cell[cell] = sorted(pieces, key=lambda x: x[1])

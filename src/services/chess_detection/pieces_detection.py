@@ -7,13 +7,9 @@ from common import models_manager
 
 
 def get_predictions(image: MatLike):
-    model = models_manager.get_yolo_model("chess_pieces_29")
+    model = models_manager.get_yolo_model("chess_pieces")
 
     results: List[Results] = model.predict(source=image, save=False, device="cpu")
-
-    print("Pieces results:", results)
-
-    results[0].save("resultado.jpg")
 
     return results[0]
 
