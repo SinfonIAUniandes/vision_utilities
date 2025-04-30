@@ -56,7 +56,108 @@ class ChessDetection:
 
         response.board = board_corners
         
-        pieces = pieces_detection.get_predictions(to_process)
+        pieces_result = pieces_detection.get_predictions(to_process)
 
+        boxes = pieces_result.boxes.xywh.cpu().numpy()
+        boxes = [list(map(round, box)) for box in boxes]
+
+        confidence = pieces_result.boxes.conf.cpu().numpy().tolist()
+        classes = pieces_result.boxes.cls.cpu().numpy().tolist()
+
+        pieces_by_name = {
+            "3": "white_pawn",
+            "9": "black_pawn",
+            "5": "white_rook",
+            "11": "black_rook",
+            "2": "white_knight",
+            "8": "black_knight",
+            "0": "white_bishop",
+            "6": "black_bishop",
+            "1": "white_king",
+            "7": "black_king",
+            "4": "white_queen",
+            "10": "black_queen",
+        }
+
+        pieces_by_cell = {}
+
+        for i in range(len(boxes)):
+            box = boxes[i]
+            x, y, w, h = box
+            w = w // 2
+            h = h // 2
+
+            base_at = y + h - w
+
+            if cv2.pointPolygonTest(np.array([corners]), (x, base_at), False) < 0:
+                color = (255, 0, 0)
+            elif confidence[i] < 0.4:
+                color = (0, 0, 255)
+            else:
+                color = (0, int(255 * confidence[i]), 0)
+            
+            piece_name = pieces_by_name[pieces_result.names[int(classes[i])]]
+
+
+            for cell, polygon in cells.items():
+                #print(cell, polygon)
+                if cv2.pointPolygonTest(np.array([polygon]), (x, base_at), False) > 0:
+                    if pieces_by_cell.get(cell) is None:
+                        pieces_by_cell[cell] = []
+                    pieces_by_cell[cell].append((piece_name, confidence[i]))
+            
+            cv2.polylines(frame, [np.array([[x - w, y - h], [x - w, y + h], [x + w, y + h], [x + w, y - h]])], True, color, thickness=2)
+
+        for cell, pieces in pieces_by_cell.items():
+            pieces_by_cell[cell] = sorted(pieces, key=lambda x: x[1])
+
+        print(pieces_by_cell)
+    
+        def dictionary_to_fen(position_dict):
+            # Mapping of piece names to FEN symbols
+            piece_to_fen = {
+                "white_king": "K", "white_queen": "Q", "white_rook": "R",
+                "white_bishop": "B", "white_knight": "N", "white_pawn": "P",
+                "black_king": "k", "black_queen": "q", "black_rook": "r",
+                "black_bishop": "b", "black_knight": "n", "black_pawn": "p"
+            }
+            
+            # Initialize an 8x8 board with empty squares
+            board = [["" for _ in range(8)] for _ in range(8)]
+            
+            # Place pieces on the board based on the dictionary
+            for cell, piece_name in position_dict.items():
+                if piece_name in piece_to_fen:
+                    file = cell[0]
+                    rank = cell[1]
+                    row = 8 - int(rank)  # Convert rank to board row (0-indexed)
+                    col = ord(file) - ord('a')  # Convert file to board column (0-indexed)
+                    board[row][col] = piece_to_fen[piece_name]
+            
+            # Generate the FEN string row by row
+            fen_rows = []
+            for row in board:
+                empty_count = 0
+                fen_row = ""
+                for square in row:
+                    if square == "":
+                        empty_count += 1
+                    else:
+                        if empty_count > 0:
+                            fen_row += str(empty_count)
+                            empty_count = 0
+                        fen_row += square
+                if empty_count > 0:
+                    fen_row += str(empty_count)
+                fen_rows.append(fen_row)
+            
+            # Combine rows with "/" to create the full FEN
+            fen = "/".join(fen_rows)
+            return fen
+            
+        for cell, piece in pieces_by_cell.items():
+            pieces_by_cell[cell] = max(piece, key=lambda x: x[1])[0]
+
+        response.fen = dictionary_to_fen(pieces_by_cell)
 
         return response
