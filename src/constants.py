@@ -1,5 +1,8 @@
 # Ros NODE Configuration
 
+from pathlib import Path
+
+
 NODE_NAME = "vision_utilities"
 
 # Used services
@@ -8,7 +11,7 @@ VISION_TOOLS_SERVICE = "/robot_toolkit/vision_tools_srv"
 
 # Models data
 
-MODELS_FOLDER = "./models/"
+MODELS_FOLDER = Path(__file__).parent / "../models"
 
 # Cameras
 
@@ -21,3 +24,8 @@ FRONT_CAMERA_NAME = "front_camera"
 
 SERVICE_READ_QR = "/vision_utilities/recognition/read_qr_srv"
 SERVICE_DETECT_CHESS = "/vision_utilities/recognition/chess_srv"
+SERVICE_DETECT_FACE_LANDMARKS = "/vision_utilities/recognition/face_landmarks_srv"
+
+# Topics
+
+TOPIC_FACE_LANDMARKS = "/vision_utilities/recognition/face_landmarks_image"

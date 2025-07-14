@@ -16,6 +16,7 @@ opencv-python~=4.10.0.84
 pillow~=10.4.0
 pycairo~=1.16.2
 pydantic~=2.8.2
+mediapipe~=0.10.11
 ultralytics
 deap
 ruff

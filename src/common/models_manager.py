@@ -2,9 +2,14 @@ import os
 import pathlib
 from ultralytics import YOLO
 
+import constants
+
 
 def get_yolo_model(name: str) -> YOLO:
-    models_folder = pathlib.Path(__file__).resolve().parent / "../../models"
-    model = YOLO(f"{models_folder}/yolo/{name}.pt")
+    model = YOLO(f"{constants.MODELS_FOLDER}/yolo/{name}.pt")
 
     return model
+
+
+def get_mediapipe_path(name: str) -> pathlib.Path:
+    return constants.MODELS_FOLDER / f"mediapipe/{name}.task"
