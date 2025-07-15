@@ -13,5 +13,5 @@ RUN pip install -r all_requirements.txt
 WORKDIR ${ROS_WORKSPACE}
 RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && catkin_make"
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/root/entrypoint.sh"]
 CMD ["rosrun", "vision_utilities", "vision_utilities.py"]
