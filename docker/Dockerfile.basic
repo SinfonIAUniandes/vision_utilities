@@ -3,6 +3,7 @@ FROM robotics:ros1-runtime
 
 WORKDIR ${ROS_WORKSPACE}/src
 
+
 RUN --mount=type=ssh \
     mkdir -p /root/.ssh && \
     ssh-keyscan github.com >> /root/.ssh/known_hosts && \
@@ -15,10 +16,10 @@ COPY . ${ROS_WORKSPACE}/src/vision_utilities/
 
 WORKDIR ${ROS_WORKSPACE}/src/vision_utilities
 
-ENV VU_AI_ENABLED=true
-
 RUN pip install -r requirements_basic.txt
-RUN pip install -r requirements_ai.txt
+
+ENV VU_TORCH_ENABLED=false
+ENV VU_MEDIAPIPE_ENABLED=false
 
 WORKDIR ${ROS_WORKSPACE}
 RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && catkin_make"

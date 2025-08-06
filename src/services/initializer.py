@@ -1,8 +1,6 @@
 import rospy
 
 from .qrcode_detection.QrCodeScanner import QrCodeScanner
-from .chess_detection.ChessDetection import ChessDetection
-from .mediapipe.face_landmark_service import FaceLandmarkService
 from config import VisionModuleConfiguration
 from common import ConsoleFormatter
 
@@ -41,10 +39,16 @@ def vision_tools_service(msg):
         print(ConsoleFormatter.error("Vision call failed"))
 
 
-def initialize(camera: str, config: VisionModuleConfiguration):
+def initialize(camera: str, config: VisionModuleConfiguration, enable_ia: bool = False):
     if config.start_cameras:
         init_cameras()
 
     QrCodeScanner(camera)
-    ChessDetection(camera)
-    FaceLandmarkService(camera)
+    
+    # TORCH DEPENDENT SERVICES
+    if enable_ia:
+        from .chess_detection.ChessDetection import ChessDetection
+        from .mediapipe.face_landmark_service import FaceLandmarkService
+
+        ChessDetection(camera)
+        FaceLandmarkService(camera)
