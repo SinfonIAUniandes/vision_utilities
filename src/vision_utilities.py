@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy
 import rosservice
+import os
 
 import sys
 
@@ -12,7 +13,7 @@ from services import initialize_services
 from config import VisionModuleConfiguration, parse_config
 
 
-class VisionToolkit:
+class VisionUtilities:
     with_pepper: bool = False
     services_module = None
     main_camera = constants.PEPPER_FRONT_CAMERA
@@ -20,6 +21,7 @@ class VisionToolkit:
 
     def __init__(self, config: VisionModuleConfiguration) -> None:
         self.config = config
+        self.enable_ia = os.getenv("VU_AI_ENABLED", "False").lower() == "true"
 
         if (
             self.config.with_pepper
@@ -30,7 +32,7 @@ class VisionToolkit:
             self.main_camera = constants.LOCAL_FRONT_CAMERA
 
         rospy.init_node(constants.NODE_NAME)
-        self.services_module = initialize_services(self.main_camera, self.config)
+        self.services_module = initialize_services(self.main_camera, self.config, self.enable_ia)
 
 
 if __name__ == "__main__":
@@ -40,7 +42,7 @@ if __name__ == "__main__":
     print(ConsoleFormatter.okblue("Using the following configuration:"))
     print("Configuration[" + str(configuration) + "]")
 
-    vision_toolkit = VisionToolkit(configuration)
+    vision_toolkit = VisionUtilities(configuration)
 
     if configuration.with_pepper:
         print(ConsoleFormatter.okgreen("-- Using remote Ros Master"))
