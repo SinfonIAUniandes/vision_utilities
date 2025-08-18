@@ -9,7 +9,7 @@ from cv2.types import MatLike
 import rospy
 
 @Singleton
-class CameraHandler:
+class CameraTopic:
     image = None
     load_balancer: LoadBalancer[MatLike]
     bridge = CvBridge()
@@ -40,3 +40,5 @@ class CameraHandler:
     def camera_subscriber(self, msg: Image):
         self.image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         self.load_balancer.run_turn(self.image)
+
+__all__ = ["CameraTopic"]
