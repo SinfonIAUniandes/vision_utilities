@@ -5,7 +5,7 @@ import random
 from ultralytics.engine.results import Results
 from deap import base, creator, tools, algorithms
 
-from common import models_manager
+from utils import models_manager
 
 
 class GeneticBoard:

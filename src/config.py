@@ -2,7 +2,7 @@ import sys
 
 from typing import List
 
-from common.ConsoleFormatter import ConsoleFormatter
+from utils.ConsoleFormatter import ConsoleFormatter
 from pydantic import BaseModel, Field, ValidationError
 
 

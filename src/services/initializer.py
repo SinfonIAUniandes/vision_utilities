@@ -2,7 +2,7 @@ import rospy
 
 from .qrcode_detection.QrCodeScanner import QrCodeScanner
 from config import VisionModuleConfiguration
-from common import ConsoleFormatter
+from utils import ConsoleFormatter
 
 from robot_toolkit_msgs.msg import vision_tools_msg
 from robot_toolkit_msgs.srv import vision_tools_srv

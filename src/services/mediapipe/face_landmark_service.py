@@ -1,4 +1,4 @@
-from common import models_manager
+from utils import models_manager
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from perception_msgs.srv import FaceLandmarkDetectionRequest, FaceLandmarkDetectionResponse, FaceLandmarkDetection

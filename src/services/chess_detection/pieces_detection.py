@@ -3,7 +3,7 @@ import numpy as np
 from cv2.typing import MatLike
 import random
 from ultralytics.engine.results import Results
-from common import models_manager
+from utils import models_manager
 
 
 def get_predictions(image: MatLike):
