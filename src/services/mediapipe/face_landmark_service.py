@@ -123,7 +123,6 @@ class FaceLandmarkService:
 
 
     def camera_subscriber(self, msg: Image):
-        
         self.image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
 
         if not self.active:
