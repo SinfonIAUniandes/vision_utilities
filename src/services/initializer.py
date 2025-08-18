@@ -3,11 +3,9 @@ from robot_toolkit_msgs.msg import vision_tools_msg
 from robot_toolkit_msgs.srv import vision_tools_srv
 
 import constants
-from common import ConsoleFormatter
 from config import VisionModuleConfiguration
+from utils import ConsoleFormatter
 
-from .chess_detection.ChessDetection import ChessDetection
-from .mediapipe.face_landmark_service import FaceLandmarkService
 from .mediapipe.hands_service import HandsService
 from .mediapipe.pose_service import PoseService
 from .OWL.nanoowl_detection_websocket import NanoOWLObjectDetectionService

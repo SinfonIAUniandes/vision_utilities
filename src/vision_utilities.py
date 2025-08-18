@@ -7,7 +7,7 @@ import sys
 
 import constants
 
-from common import ConsoleFormatter
+from utils import ConsoleFormatter
 from services import initialize_services
 
 from config import VisionModuleConfiguration, parse_config
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     print(ConsoleFormatter.okblue("Using the following configuration:"))
     print("Configuration[" + str(configuration) + "]")
 
-    vision_toolkit = VisionUtilities(configuration)
+    vision_utilities = VisionUtilities(configuration)
 
     if configuration.with_pepper:
         print(ConsoleFormatter.okgreen("-- Using remote Ros Master"))
