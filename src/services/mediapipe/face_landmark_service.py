@@ -9,13 +9,14 @@ from mediapipe.tasks.python.vision import FaceLandmarker, FaceLandmarkerOptions
 from pathlib import Path
 import rospy
 import cv2
+from cv2.types import MatLike
 import mediapipe as mp
 import numpy as np
 import constants
+from utils.camera_topic import CameraTopic
 
 class FaceLandmarkService:
     bridge = CvBridge()
-    image = None
     active = False
 
     def __init__(self, camera: str):
@@ -24,7 +25,7 @@ class FaceLandmarkService:
         self.detector = self.initialize_face_landmarker()
         self.image_pub = rospy.Publisher(constants.TOPIC_FACE_LANDMARKS, Image, queue_size=10)
         self.service = rospy.Service(constants.SERVICE_DETECT_FACE_LANDMARKS, FaceLandmarkDetection, self.handle_face_landmark_detection)
-        rospy.Subscriber(camera, Image, self.camera_subscriber)
+        self.camera = CameraTopic(camera)
 
     def initialize_face_landmarker(self):
         options = FaceLandmarkerOptions(
@@ -122,17 +123,8 @@ class FaceLandmarkService:
 
 
 
-    def camera_subscriber(self, msg: Image):
-        self.image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-
-        if not self.active:
-            return
-
-        if self.image is None:
-            rospy.logerr("No image received from camera.")
-            return
-
-        rgb_frame = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
+    def camera_subscriber(self, image: MatLike):
+        rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         detection_result = self.detector.detect(mp_image)
         # DEBUG: print top 5 blendshapes for the first detected face
@@ -150,7 +142,7 @@ class FaceLandmarkService:
             print(f"[INFO] Detected {num} face(s)")
             # (optional) overlay text on the frame:
             cv2.putText(
-                self.image,
+                image,
                 f"Faces: {num}",
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
@@ -162,7 +154,7 @@ class FaceLandmarkService:
             print("[INFO] No faces detected")
             # (optional) overlay text on the frame:
             cv2.putText(
-                self.image,
+                image,
                 "No face",
                 (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX,
@@ -235,10 +227,20 @@ class FaceLandmarkService:
 
     def handle_face_landmark_detection(self, req: FaceLandmarkDetectionRequest):
         response = FaceLandmarkDetectionResponse()
+
+        desired_status = req.state == "active"
+
+        if self.active == desired_status:
+            response.state = "Already " + ("active" if self.active else "inactive")
+            return response
+
         if req.state == "active":
             self.active = True
+            self.sid = self.camera.subscribe(self.camera_subscriber, wait_turns=3)
+            response.state = "Activated"
         else:
             self.active = False
-            
-        response.state = "Active:" + str(self.active)
+            self.camera.unsubscribe(self.sid)
+            response.state = "Deactivated"
+        
         return response
