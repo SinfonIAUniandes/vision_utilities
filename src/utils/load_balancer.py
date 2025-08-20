@@ -3,9 +3,13 @@ from dataclasses import dataclass
 from functools import lru_cache
 from itertools import combinations
 from typing import Callable, Generic, List, Tuple, Dict, Optional, TypeVar
-from math import lcm
+import math
 
 T = TypeVar("T")
+
+
+def lcm(a, b):
+    return abs(a * b) // math.gcd(a, b)
 
 
 @dataclass(frozen=True)

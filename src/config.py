@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 class VisionModuleConfiguration(BaseModel):
     with_pepper: bool = Field(default=False)
     start_cameras: bool = Field(default=False)
-
+    ia: bool = Field(default=False)
 
 def parse_config(args: List[str]) -> VisionModuleConfiguration:
     """

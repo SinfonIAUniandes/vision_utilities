@@ -1,6 +1,7 @@
 from utils import models_manager
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
+from perception_msgs.msg import Polygon
 from perception_msgs.srv import FaceLandmarkDetectionRequest, FaceLandmarkDetectionResponse, FaceLandmarkDetection
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks.python import vision
@@ -9,7 +10,7 @@ from mediapipe.tasks.python.vision import FaceLandmarker, FaceLandmarkerOptions
 from pathlib import Path
 import rospy
 import cv2
-from cv2.types import MatLike
+from cv2.typing import MatLike
 import mediapipe as mp
 import numpy as np
 import constants
@@ -18,12 +19,13 @@ from utils.camera_topic import CameraTopic
 class FaceLandmarkService:
     bridge = CvBridge()
     active = False
+    frames_interval = 3
 
     def __init__(self, camera: str):
         self.active = False
         self.model_asset_path = models_manager.get_mediapipe_path("face_landmarker")
         self.detector = self.initialize_face_landmarker()
-        self.image_pub = rospy.Publisher(constants.TOPIC_FACE_LANDMARKS, Image, queue_size=10)
+        self.image_pub = rospy.Publisher(constants.TOPIC_FACE_LANDMARKS, Polygon, queue_size=10)
         self.service = rospy.Service(constants.SERVICE_DETECT_FACE_LANDMARKS, FaceLandmarkDetection, self.handle_face_landmark_detection)
         self.camera = CameraTopic(camera)
 
@@ -228,15 +230,21 @@ class FaceLandmarkService:
     def handle_face_landmark_detection(self, req: FaceLandmarkDetectionRequest):
         response = FaceLandmarkDetectionResponse()
 
-        desired_status = req.state == "active"
-
-        if self.active == desired_status:
+        if self.active == req.state and req.frames_interval == self.frames_interval:
             response.state = "Already " + ("active" if self.active else "inactive")
             return response
+        
+        if self.active:
+            self.active = False
+            self.camera.unsubscribe(self.sid)
+            response.state = "Deactivated"
 
-        if req.state == "active":
+        self.frames_interval = req.frames_interval
+
+
+        if req.state:
             self.active = True
-            self.sid = self.camera.subscribe(self.camera_subscriber, wait_turns=3)
+            self.sid = self.camera.subscribe(self.camera_subscriber, wait_turns=req.frames_interval)
             response.state = "Activated"
         else:
             self.active = False
