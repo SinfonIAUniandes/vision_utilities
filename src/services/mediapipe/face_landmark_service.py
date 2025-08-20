@@ -1,31 +1,46 @@
-from utils import models_manager
+from pathlib import Path
+
+import cv2
+import mediapipe as mp
+import numpy as np
+import rospy
+from cv2.typing import MatLike
 from cv_bridge import CvBridge
-from sensor_msgs.msg import Image
-from perception_msgs.srv import ToggleDetectionTopicRequest, ToggleDetectionTopicResponse, ToggleDetectionTopic
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.core.base_options import BaseOptions
 from mediapipe.tasks.python.vision import FaceLandmarker, FaceLandmarkerOptions
-from pathlib import Path
-import rospy
-import cv2
-from cv2.types import MatLike
-import mediapipe as mp
-import numpy as np
+from perception_msgs.msg import Polygon
+from perception_msgs.srv import (
+    ToggleDetectionTopic,
+    ToggleDetectionTopicRequest,
+    ToggleDetectionTopicResponse,
+)
+from sensor_msgs.msg import Image
+
 import constants
+from utils import models_manager
 from utils.camera_topic import CameraTopic
+
 
 class FaceLandmarkService:
     bridge = CvBridge()
     active = False
+    frames_interval = 3
 
     def __init__(self, camera: str):
         self.active = False
         self.model_asset_path = models_manager.get_mediapipe_path("face_landmarker")
         self.detector = self.initialize_face_landmarker()
-        self.image_pub = rospy.Publisher(constants.TOPIC_FACE_LANDMARKS, Image, queue_size=10)
-        self.service = rospy.Service(constants.SERVICE_DETECT_FACE_LANDMARKS, ToggleDetectionTopic, self.handle_face_landmark_detection)
-        rospy.Subscriber(camera, Image, self.camera_subscriber)
+        self.service = rospy.Service(
+            constants.SERVICE_DETECT_FACE_LANDMARKS,
+            ToggleDetectionTopic,
+            self.handle_face_landmark_detection,
+        )
+        self.image_pub = rospy.Publisher(
+            constants.TOPIC_FACE_LANDMARKS, Polygon, queue_size=10
+        )
+        self.camera = CameraTopic(camera)
 
     def initialize_face_landmarker(self):
         options = FaceLandmarkerOptions(
@@ -93,7 +108,6 @@ class FaceLandmarkService:
         y_min, y_max = int(min(ys)), int(max(ys))
         return x_min, y_min, x_max - x_min, y_max - y_min
 
-
     def classify_expression(self, blendshapes, threshSmile=0.6, threshBrow=0.5):
         """
         Simple rules based on blendshape scores:
@@ -120,8 +134,6 @@ class FaceLandmarkService:
         ):
             return " Bravo"
         return " Neutral"
-
-
 
     def camera_subscriber(self, image: MatLike):
         rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -160,8 +172,9 @@ class FaceLandmarkService:
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1.0,
                 (0, 0, 255),
-                2,)
-           # Process the detection result - Visualize it
+                2,
+            )
+        # Process the detection result - Visualize it
         annotated_image = self.draw_landmarks_on_image(rgb_frame, detection_result)
 
         # 1) Convert the annotated image to BGR for OpenCV
@@ -219,30 +232,19 @@ class FaceLandmarkService:
                 cv2.LINE_AA,
             )
 
-
-
         annotated_image_msg = self.bridge.cv2_to_imgmsg(frame_out, encoding="bgr8")
 
         self.image_pub.publish(annotated_image_msg)
 
-<<<<<<< HEAD
     def handle_face_landmark_detection(self, req: ToggleDetectionTopicRequest):
         response = ToggleDetectionTopicResponse()
         if req.state:
-=======
-    def handle_face_landmark_detection(self, req: FaceLandmarkDetectionRequest):
-        response = FaceLandmarkDetectionResponse()
-
-        desired_status = req.state == "active"
-
-        if self.active == desired_status:
-            response.state = "Already " + ("active" if self.active else "inactive")
-            return response
-
-        if req.state == "active":
->>>>>>> 44fdda4 (Migrated face_landmark_service to use CameraTopic handler)
+            self.frames_interval = req.frames_interval
+        if req.state:
             self.active = True
-            self.sid = self.camera.subscribe(self.camera_subscriber, wait_turns=3)
+            self.sid = self.camera.subscribe(
+                self.camera_subscriber, wait_turns=req.frames_interval
+            )
             response.state = "Activated"
         else:
             self.active = False

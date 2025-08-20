@@ -7,7 +7,7 @@ import constants
 import cv2
 from cv_bridge import CvBridge
 from utils.camera_topic import CameraTopic
-from cv2.types import MatLike
+from cv2.typing import MatLike
 
 
 class QrCodeScanner:

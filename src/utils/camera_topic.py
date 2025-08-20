@@ -1,10 +1,10 @@
-from pyparsing import Callable
+from typing import Callable
 from utils.load_balancer import LoadBalancer
 from utils.singleton import Singleton
-from std_msgs.msg import Image
+from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 
-from cv2.types import MatLike
+from cv2.typing import MatLike
 
 import rospy
 

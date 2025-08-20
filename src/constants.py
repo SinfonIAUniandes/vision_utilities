@@ -4,6 +4,7 @@ from pathlib import Path
 
 
 NODE_NAME = "vision_utilities"
+WEBCAM_PUBLISHER_NAME = "vision_utilities_webcam_publisher"
 
 # Used services
 

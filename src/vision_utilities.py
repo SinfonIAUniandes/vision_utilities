@@ -21,7 +21,7 @@ class VisionUtilities:
 
     def __init__(self, config: VisionModuleConfiguration) -> None:
         self.config = config
-        self.enable_ia = os.getenv("VU_AI_ENABLED", "False").lower() == "true"
+        rospy.init_node(constants.NODE_NAME)
 
         if (
             self.config.with_pepper
@@ -31,8 +31,7 @@ class VisionUtilities:
         else:
             self.main_camera = constants.LOCAL_FRONT_CAMERA
 
-        rospy.init_node(constants.NODE_NAME)
-        self.services_module = initialize_services(self.main_camera, self.config, self.enable_ia)
+        self.services_module = initialize_services(self.main_camera, self.config, self.config.ia)
 
 
 if __name__ == "__main__":
