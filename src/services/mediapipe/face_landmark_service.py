@@ -37,6 +37,41 @@ class FaceLandmarkService:
             num_faces=5,
         )
         return FaceLandmarker.create_from_options(options)
+    
+
+    def get_landmark_polygons(self, detection_result):
+        """
+        Extracts face landmark connections as a list of polygons (lines).
+
+        Args:
+            detection_result: The result from a MediaPipe face landmarker detection.
+
+        Returns:
+            A list of polygons, where each polygon is a list of floats
+            representing a line segment, e.g., [x1, y1, x2, y2].
+        """
+        all_polygons = []
+        face_landmarks_list = detection_result.face_landmarks
+
+        # Combine all connection sets from MediaPipe Face Mesh
+        connections = (
+            mp.solutions.face_mesh.FACEMESH_TESSELATION
+            | mp.solutions.face_mesh.FACEMESH_CONTOURS
+            | mp.solutions.face_mesh.FACEMESH_IRISES
+        )
+
+        for face_landmarks in face_landmarks_list:
+            for connection in connections:
+                start_idx, end_idx = connection
+                start_lm = face_landmarks[start_idx]
+                end_lm = face_landmarks[end_idx]
+                
+                # A line is a polygon of two points [x1, y1, x2, y2]
+                polygon = [start_lm.x, start_lm.y, end_lm.x, end_lm.y]
+                all_polygons.append(polygon)
+
+        return np.array(all_polygons).flatten().tolist()
+    
 
     def draw_landmarks_on_image(self, rgb_image, detection_result):
         drawing_styles = mp.solutions.drawing_styles
@@ -129,6 +164,16 @@ class FaceLandmarkService:
         rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         detection_result = self.detector.detect(mp_image)
+
+        polygons = self.get_landmark_polygons(detection_result)
+
+        response = Polygon()
+        response.label = "face"
+        response.polygon = polygons
+
+        self.image_pub.publish(response)
+        return 
+
         # DEBUG: print top 5 blendshapes for the first detected face
         if detection_result.face_blendshapes:
             bs0 = detection_result.face_blendshapes[0]
@@ -224,8 +269,6 @@ class FaceLandmarkService:
 
         
         annotated_image_msg = self.bridge.cv2_to_imgmsg(frame_out, encoding="bgr8")
-
-        self.image_pub.publish(annotated_image_msg)
 
     def handle_face_landmark_detection(self, req: FaceLandmarkDetectionRequest):
         response = FaceLandmarkDetectionResponse()
