@@ -236,7 +236,7 @@ class FaceLandmarkService:
 
     def handle_face_landmark_detection(self, req: FaceLandmarkDetectionRequest):
         response = FaceLandmarkDetectionResponse()
-        if req.state == "active":
+        if req.state:
             self.active = True
         else:
             self.active = False
