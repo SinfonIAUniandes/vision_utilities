@@ -21,3 +21,4 @@ ultralytics
 deap
 ruff
 ollama
+openai

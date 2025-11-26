@@ -3,7 +3,7 @@ import rospy
 from .qrcode_detection.QrCodeScanner import QrCodeScanner
 from .chess_detection.ChessDetection import ChessDetection
 from .mediapipe.face_landmark_service import FaceLandmarkService
-from .vlm.ollama_vlm import OllamaVLMService
+from .vlm.img_description import VLMService
 from config import VisionModuleConfiguration
 from common import ConsoleFormatter
 
@@ -49,4 +49,4 @@ def initialize(camera: str, config: VisionModuleConfiguration):
     QrCodeScanner(camera)
     ChessDetection(camera)
     FaceLandmarkService(camera)
-    OllamaVLMService(camera)
+    VLMService(camera, config.llm_mode, config.vlm_model, config.vlm_max_tokens)

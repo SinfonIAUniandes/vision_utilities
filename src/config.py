@@ -1,14 +1,20 @@
 import sys
-
+from pathlib import Path
 from typing import List
 
 from common.ConsoleFormatter import ConsoleFormatter
 from pydantic import BaseModel, Field, ValidationError
 
+import yaml
+
 
 class VisionModuleConfiguration(BaseModel):
     with_pepper: bool = Field(default=False)
     start_cameras: bool = Field(default=False)
+    # VLM configuration (loaded from config.yaml under `vlm:`)
+    llm_mode: str = Field(default="ollama")
+    vlm_model: str = Field(default="gemma3_12b")
+    vlm_max_tokens: int = Field(default=500)
 
 
 def parse_config(args: List[str]) -> VisionModuleConfiguration:
@@ -21,6 +27,22 @@ def parse_config(args: List[str]) -> VisionModuleConfiguration:
     default_config = VisionModuleConfiguration()
     received_config = default_config.model_dump()
     keys = set(received_config.keys())
+
+    config_path = Path(__file__).parent / "config.yaml"
+    if config_path.exists() and yaml is not None:
+        with config_path.open("r") as f:
+            data = yaml.safe_load(f) or {}
+        vlm_cfg = data.get("vlm") or {}
+        # Map YAML keys to our model's keys
+        if isinstance(vlm_cfg, dict):
+            if "llm_mode" in vlm_cfg:
+                received_config["llm_mode"] = vlm_cfg.get("llm_mode")
+            if "model" in vlm_cfg:
+                received_config["vlm_model"] = vlm_cfg.get("model")
+            if "max_tokens" in vlm_cfg:
+                received_config["vlm_max_tokens"] = vlm_cfg.get("max_tokens")
+    elif config_path.exists() and yaml is None:
+        print(ConsoleFormatter.warning("Vision utilities: PyYAML not installed; skipping config.yaml."))
 
     for i in range(len(args)):
         argument = args[i]
@@ -51,7 +73,9 @@ def parse_config(args: List[str]) -> VisionModuleConfiguration:
     try:
         return VisionModuleConfiguration.model_validate(received_config)
     except ValidationError:
-        ConsoleFormatter.error(
-            f"Vision utilities: The provided configuration is not valid. Check for documentation"
+        print(
+            ConsoleFormatter.error(
+                f"Vision utilities: The provided configuration is not valid. Check for documentation"
+            )
         )
         sys.exit(-1)
