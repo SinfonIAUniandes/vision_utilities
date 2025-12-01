@@ -2,6 +2,7 @@ import rospy
 
 from .qrcode_detection.QrCodeScanner import QrCodeScanner
 from .chess_detection.ChessDetection import ChessDetection
+from .YOLO_based.coco_detection import COCOObjectDetectionService
 from .mediapipe.face_landmark_service import FaceLandmarkService
 from .mediapipe.pose_service import PoseService
 from .vlm.img_description import VLMService
@@ -49,6 +50,7 @@ def initialize(camera: str, config: VisionModuleConfiguration):
 
     QrCodeScanner(camera)
     ChessDetection(camera)
+    COCOObjectDetectionService(camera)
     FaceLandmarkService(camera)
     PoseService(camera)
     VLMService(camera, config.llm_mode, config.vlm_model, config.vlm_max_tokens)
