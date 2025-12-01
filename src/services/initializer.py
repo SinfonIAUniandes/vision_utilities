@@ -5,6 +5,7 @@ from .chess_detection.ChessDetection import ChessDetection
 from .YOLO_based.coco_detection import COCOObjectDetectionService
 from .mediapipe.face_landmark_service import FaceLandmarkService
 from .mediapipe.pose_service import PoseService
+from .mediapipe.hands_service import HandsService
 from .vlm.img_description import VLMService
 from config import VisionModuleConfiguration
 from common import ConsoleFormatter
@@ -53,4 +54,5 @@ def initialize(camera: str, config: VisionModuleConfiguration):
     COCOObjectDetectionService(camera)
     FaceLandmarkService(camera)
     PoseService(camera)
+    HandsService(camera)
     VLMService(camera, config.llm_mode, config.vlm_model, config.vlm_max_tokens)
