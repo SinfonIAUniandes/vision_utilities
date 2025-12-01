@@ -25,8 +25,11 @@ FRONT_CAMERA_NAME = "front_camera"
 SERVICE_READ_QR = "/vision_utilities/recognition/read_qr_srv"
 SERVICE_DETECT_CHESS = "/vision_utilities/recognition/chess_srv"
 SERVICE_DETECT_FACE_LANDMARKS = "/vision_utilities/recognition/face_landmarks_srv"
+SERVICE_DETECT_POSE_LANDMARKS = "/vision_utilities/recognition/pose_srv"
+SERVICE_READ_IMAGE = "/vision_utilities/recognition/read_image_srv"
 SERVICE_VLM = "/vision_utilities/recognition/vlm_srv"
 
 # Topics
 
 TOPIC_FACE_LANDMARKS = "/vision_utilities/recognition/face_landmarks_image"
+TOPIC_POSE_LANDMARKS = "/vision_utilities/recognition/pose_landmarks_image"
