@@ -15,6 +15,7 @@ class COCOObjectDetectionService:
     def __init__(self, camera: str):
         self.active = False
         self.model = models_manager.get_yolo_model("yolo11s")
+        self.model.to('cpu')
         self.image_pub = rospy.Publisher(constants.TOPIC_COCO_DETECTIONS, Image, queue_size=10)
         self.service = rospy.Service(constants.SERVICE_DETECT_COCO_OBJECTS, FaceLandmarkDetection, self.handle_coco_object_detection)
         rospy.Subscriber(camera, Image, self.camera_subscriber)
