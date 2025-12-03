@@ -1,4 +1,4 @@
-numpy -U
+numpy
 PyYAML
 rospkg
 python-dateutil
@@ -12,7 +12,7 @@ matplotlib
 defusedxml
 pydot
 PyOpenGL
-opencv-python -U
+opencv-python
 pillow
 pycairo
 pydantic
@@ -22,3 +22,4 @@ deap
 ruff
 ollama
 openai
+websockets

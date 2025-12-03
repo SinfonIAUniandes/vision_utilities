@@ -10,6 +10,5 @@ def get_yolo_model(name: str) -> YOLO:
 
     return model
 
-
 def get_mediapipe_path(name: str) -> pathlib.Path:
     return constants.MODELS_FOLDER / f"mediapipe/{name}.task"
