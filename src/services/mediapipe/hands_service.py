@@ -1,7 +1,7 @@
 from common import models_manager
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from perception_msgs.srv import FaceLandmarkDetectionRequest, FaceLandmarkDetectionResponse, FaceLandmarkDetection
+from perception_msgs.srv import ToggleDetectionTopicRequest, ToggleDetectionTopicResponse, ToggleDetectionTopic
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.core.base_options import BaseOptions
@@ -22,7 +22,7 @@ class HandsService:
         self.active = False
         self.model_asset_path = models_manager.get_mediapipe_path("hand_landmarker")
         self.image_pub = rospy.Publisher(constants.TOPIC_HAND_LANDMARKS, Image, queue_size=10)
-        self.service = rospy.Service(constants.SERVICE_DETECT_HAND_LANDMARKS, FaceLandmarkDetection, self.handle_hand_detection)
+        self.service = rospy.Service(constants.SERVICE_DETECT_HAND_LANDMARKS, ToggleDetectionTopic, self.handle_hand_detection)
         mp_hands = mp.solutions.hands
 
         self.drawing_styles = mp.solutions.drawing_styles
@@ -71,8 +71,8 @@ class HandsService:
         annotated_image_msg = self.bridge.cv2_to_imgmsg(annotated_image, encoding="bgr8")
         self.image_pub.publish(annotated_image_msg)
 
-    def handle_hand_detection(self, req: FaceLandmarkDetectionRequest):
-        response = FaceLandmarkDetectionResponse()
+    def handle_hand_detection(self, req: ToggleDetectionTopicRequest):
+        response = ToggleDetectionTopicResponse()
         if req.state:
             self.active = True
         else:

@@ -1,7 +1,7 @@
 from common import models_manager
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from perception_msgs.srv import FaceLandmarkDetectionRequest, FaceLandmarkDetectionResponse, FaceLandmarkDetection
+from perception_msgs.srv import ToggleDetectionTopicRequest, ToggleDetectionTopicResponse, ToggleDetectionTopic
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.core.base_options import BaseOptions
@@ -23,7 +23,7 @@ class FaceLandmarkService:
         self.model_asset_path = models_manager.get_mediapipe_path("face_landmarker")
         self.detector = self.initialize_face_landmarker()
         self.image_pub = rospy.Publisher(constants.TOPIC_FACE_LANDMARKS, Image, queue_size=10)
-        self.service = rospy.Service(constants.SERVICE_DETECT_FACE_LANDMARKS, FaceLandmarkDetection, self.handle_face_landmark_detection)
+        self.service = rospy.Service(constants.SERVICE_DETECT_FACE_LANDMARKS, ToggleDetectionTopic, self.handle_face_landmark_detection)
         rospy.Subscriber(camera, Image, self.camera_subscriber)
 
     def initialize_face_landmarker(self):
@@ -234,8 +234,8 @@ class FaceLandmarkService:
 
         self.image_pub.publish(annotated_image_msg)
 
-    def handle_face_landmark_detection(self, req: FaceLandmarkDetectionRequest):
-        response = FaceLandmarkDetectionResponse()
+    def handle_face_landmark_detection(self, req: ToggleDetectionTopicRequest):
+        response = ToggleDetectionTopicResponse()
         if req.state:
             self.active = True
         else:

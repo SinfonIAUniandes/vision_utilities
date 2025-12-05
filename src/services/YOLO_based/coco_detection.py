@@ -9,7 +9,7 @@ import constants
 from common import models_manager
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from perception_msgs.srv import FaceLandmarkDetectionRequest, FaceLandmarkDetectionResponse, FaceLandmarkDetection
+from perception_msgs.srv import ToggleDetectionTopicRequest, ToggleDetectionTopicResponse, ToggleDetectionTopic
 
 class COCOObjectDetectionService:
     bridge = CvBridge()
@@ -18,7 +18,7 @@ class COCOObjectDetectionService:
 
     def __init__(self, camera: str):
         self.active = False
-        self.device = "cpu"  # options are "cpu", "cuda", "npu" 
+        self.device = "cuda"  # options are "cpu", "cuda", "npu" 
         self.model_name = "yolo11n"
 
         print(f"Iniciando servicio de detección en modo: {self.device}")
@@ -35,11 +35,11 @@ class COCOObjectDetectionService:
             self.model.to(self.device)
 
         self.image_pub = rospy.Publisher(constants.TOPIC_COCO_DETECTIONS, Image, queue_size=10)
-        self.service = rospy.Service(constants.SERVICE_DETECT_COCO_OBJECTS, FaceLandmarkDetection, self.handle_coco_object_detection)
+        self.service = rospy.Service(constants.SERVICE_DETECT_COCO_OBJECTS, ToggleDetectionTopic, self.handle_coco_object_detection)
         rospy.Subscriber(camera, Image, self.camera_subscriber)
 
-    def handle_coco_object_detection(self, req: FaceLandmarkDetectionRequest):
-        response = FaceLandmarkDetectionResponse()
+    def handle_coco_object_detection(self, req: ToggleDetectionTopicRequest):
+        response = ToggleDetectionTopicResponse()
         if req.state:
             self.active = True
         else:
