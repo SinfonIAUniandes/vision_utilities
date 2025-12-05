@@ -3,6 +3,7 @@ import rospy
 from .qrcode_detection.QrCodeScanner import QrCodeScanner
 from .chess_detection.ChessDetection import ChessDetection
 from .YOLO_based.coco_detection import COCOObjectDetectionService
+from .OWL.nanoowl_detection_websocket import NanoOWLObjectDetectionService
 from .mediapipe.face_landmark_service import FaceLandmarkService
 from .mediapipe.pose_service import PoseService
 from .mediapipe.hands_service import HandsService
@@ -52,6 +53,7 @@ def initialize(camera: str, config: VisionModuleConfiguration):
     QrCodeScanner(camera)
     ChessDetection(camera)
     COCOObjectDetectionService(camera)
+    NanoOWLObjectDetectionService(camera)
     FaceLandmarkService(camera)
     PoseService(camera)
     HandsService(camera)

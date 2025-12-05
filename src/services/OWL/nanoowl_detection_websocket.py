@@ -6,39 +6,29 @@ import websockets
 import json
 import constants
 
-from common import models_manager
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-from perception_msgs.srv import ToggleDetectionTopicRequest, ToggleDetectionTopicResponse, ToggleDetectionTopic
+from perception_msgs.srv import ToggleDetectionTopicRequest, ToggleDetectionTopicResponse, ToggleDetectionTopic, PromptObjectDetection, PromptObjectDetectionRequest, PromptObjectDetectionResponse
 
-class COCOObjectDetectionService:
+class NanoOWLObjectDetectionService:
     bridge = CvBridge()
     image = None
     active = False
 
     def __init__(self, camera: str):
         self.active = False
-        self.device = "cuda"  # options are "cpu", "cuda", "npu" 
-        self.model_name = "yolo11n"
+        self.prompt = "[a person][a mug][a bottle]"  # ejemplo de prompt
 
-        print(f"Iniciando servicio de detección en modo: {self.device}")
+        # URL del WebSocket para inferencia remota
+        self.websocket_url = "ws://localhost:5231/ws/detect"
+        print(f"Configurado para inferencia remota vía WebSocket: {self.websocket_url}")
 
-        # Lógica de carga: Si es NPU prepara WebSocket, sino carga el modelo local
-        if self.device == "npu":
-            # URL del WebSocket para inferencia remota
-            self.websocket_url = "ws://localhost:5230/ws/detect"
-            print(f"Configurado para inferencia remota vía WebSocket: {self.websocket_url}")
-            self.model = None
-        else:
-            print("Cargando modelo localmente para NPU...")
-            self.model = models_manager.get_yolo_model(self.model_name)
-            self.model.to(self.device)
-
-        self.image_pub = rospy.Publisher(constants.TOPIC_COCO_DETECTIONS, Image, queue_size=10)
-        self.service = rospy.Service(constants.SERVICE_DETECT_COCO_OBJECTS, ToggleDetectionTopic, self.handle_coco_object_detection)
+        self.image_pub = rospy.Publisher(constants.TOPIC_OWL_DETECTIONS, Image, queue_size=10)
+        self.start_topic_service = rospy.Service(constants.SERVICE_DETECT_OWL_OBJECTS, ToggleDetectionTopic, self.handle_owl_object_detection)
+        self.prompt_service = rospy.Service(constants.SERVICE_DETECT_OWL_OBJECTS + "_prompt", PromptObjectDetection, self.handle_prompt_object_detection)
         rospy.Subscriber(camera, Image, self.camera_subscriber)
 
-    def handle_coco_object_detection(self, req: ToggleDetectionTopicRequest):
+    def handle_owl_object_detection(self, req: ToggleDetectionTopicRequest):
         response = ToggleDetectionTopicResponse()
         if req.state:
             self.active = True
@@ -48,26 +38,22 @@ class COCOObjectDetectionService:
         response.state = "Active:" + str(self.active)
         return response
 
+    def handle_prompt_object_detection(self, req: PromptObjectDetectionRequest):
+        response = PromptObjectDetectionResponse()
+        self.prompt = req.prompt
+        response.success = True
+        return response
+
     def camera_subscriber(self, msg: Image):
         if not self.active:
             return
 
         try:
-            # 1. Convertir la imagen ROS a OpenCV
             cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
             annotated_image = None
 
-            # 2. Decidir método de inferencia
-            if self.device == "npu":
-                # --- INFERENCIA REMOTA (WEBSOCKET) ---
-                # Ejecutamos la corrutina asíncrona de forma síncrona
-                annotated_image = asyncio.run(self.process_via_websocket(cv_image))
-            else:
-                # --- INFERENCIA LOCAL ---
-                results = self.model(cv_image)
-                annotated_image = results[0].plot()
+            annotated_image = asyncio.run(self.process_via_websocket(cv_image))
 
-            # 3. Publicar la imagen anotada
             if annotated_image is not None:
                 annotated_msg = self.bridge.cv2_to_imgmsg(annotated_image, encoding='bgr8')
                 self.image_pub.publish(annotated_msg)
@@ -81,18 +67,17 @@ class COCOObjectDetectionService:
         """
         try:
             async with websockets.connect(self.websocket_url) as websocket:
-                # Codificar imagen a JPEG para transmisión rápida
-                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 70]
+                # 1. Enviar el prompt actual
+                await websocket.send(self.prompt)
+                await websocket.recv()  # Esperar confirmación
+                # 2. Enviar la imagen
+                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
                 _, buffer = cv2.imencode('.jpg', frame, encode_param)
-                
-                # Enviar bytes
                 await websocket.send(buffer.tobytes())
 
-                # Esperar respuesta
                 response = await websocket.recv()
                 data = json.loads(response)
-
-                # Dibujar detecciones sobre el frame original
+                
                 return self.draw_detections(frame, data)
                 
         except (websockets.exceptions.ConnectionClosed, ConnectionRefusedError) as e:
