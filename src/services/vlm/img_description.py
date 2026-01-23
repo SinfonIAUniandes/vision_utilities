@@ -57,7 +57,11 @@ class VLMService:
             if image_b64:
                 messages[0]["images"] = [image_b64]
 
-            response = ollama.chat(model=self.model, messages=messages)
+            response = ollama.chat(
+                model=self.model,
+                messages=messages,
+                options={"temperature": temperature},
+            )
             return response["message"]["content"]
         except Exception as e:
             rospy.logerr(f"Error calling Ollama: {e}")
@@ -71,18 +75,16 @@ class VLMService:
         model: Optional[str] = None,
     ) -> str:
         try:
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/png;base64,{image_b64}"},
-                        },
-                    ],
-                }
-            ]
+            content = [{"type": "text", "text": prompt}]
+            if image_b64:
+                content.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"},
+                    }
+                )
+
+            messages = [{"role": "user", "content": content}]
 
             answer = self.clientGPT.chat.completions.create(
                 model=model,

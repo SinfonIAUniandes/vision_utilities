@@ -15,7 +15,7 @@ from perception_msgs.srv import (
 from sensor_msgs.msg import Image
 
 import constants
-from common import models_manager
+from utils import models_manager
 from utils.camera_topic import CameraTopic
 
 
@@ -24,8 +24,8 @@ class COCOObjectDetectionService:
     active = False
 
     def __init__(self, camera: str):
-        self.device = "cuda"
         self.model_name = "yolo11n"
+        self._detect_device()
 
         print(f"Iniciando servicio de detección en modo: {self.device}")
 
@@ -38,7 +38,8 @@ class COCOObjectDetectionService:
         else:
             print("Cargando modelo localmente...")
             self.model = models_manager.get_yolo_model(self.model_name)
-            self.model.to(self.device)
+            if self.device != "cpu":
+                self.model.to(self.device)
 
         self.image_pub = rospy.Publisher(
             constants.TOPIC_COCO_DETECTIONS, Image, queue_size=10
@@ -50,6 +51,17 @@ class COCOObjectDetectionService:
         )
         self.camera = CameraTopic(camera)
         self.sid = None
+
+    def _detect_device(self):
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                self.device = "cuda"
+            else:
+                self.device = "cpu"
+        except ImportError:
+            self.device = "cpu"
 
     def camera_subscriber(self, image: MatLike):
         try:
@@ -101,14 +113,18 @@ class COCOObjectDetectionService:
     def handle_coco_object_detection(self, req: ToggleDetectionTopicRequest):
         response = ToggleDetectionTopicResponse()
         if req.state:
+            if self.active and self.sid is not None:
+                self.camera.unsubscribe(self.sid)
+            frames_interval = max(1, req.frames_interval)
             self.active = True
             self.sid = self.camera.subscribe(
-                self.camera_subscriber, wait_turns=req.frames_interval
+                self.camera_subscriber, wait_turns=frames_interval
             )
             response.state = "Activated"
         else:
             self.active = False
             if self.sid is not None:
                 self.camera.unsubscribe(self.sid)
+                self.sid = None
             response.state = "Deactivated"
         return response

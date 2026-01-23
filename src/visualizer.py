@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import sys
+
 import cv2
 import numpy as np
 import rospy
@@ -20,7 +22,7 @@ class PolygonRenderer:
     bridge = CvBridge()
     topics = {}
 
-    def __init__(self):
+    def __init__(self, camera_topic: str):
         rospy.init_node(constants.POLYGON_RENDERING_NAME, anonymous=True)
         rospy.Service(
             constants.SERVICE_RENDER_POLYGON_TOPIC,
@@ -28,7 +30,7 @@ class PolygonRenderer:
             self.service_callback,
         )
         self.publisher = rospy.Publisher(constants.TOPIC_POLYGON_RENDERER, Image)
-        self.camera = CameraTopic(constants.PEPPER_FRONT_CAMERA)
+        self.camera = CameraTopic(camera_topic)
         self.sid = self.camera.subscribe(self.camera_callback, wait_turns=1)
         rospy.spin()
 
@@ -83,4 +85,8 @@ class PolygonRenderer:
 
 
 if __name__ == "__main__":
-    PolygonRenderer()
+    use_local = "--local" in sys.argv
+    camera = (
+        constants.LOCAL_FRONT_CAMERA if use_local else constants.PEPPER_FRONT_CAMERA
+    )
+    PolygonRenderer(camera)

@@ -42,9 +42,4 @@ TOPIC_OWL_DETECTIONS = "/vision_utilities/recognition/owl_detections_image"
 TOPIC_HAND_LANDMARKS = "/vision_utilities/recognition/hand_landmarks_image"
 SERVICE_RENDER_POLYGON_TOPIC = "/vision_utilities/rendering/visualize_polygon_topic_srv"
 
-# Topics
-
-TOPIC_FACE_LANDMARKS = "/vision_utilities/recognition/face_landmarks_polygons"
-
-
 TOPIC_POLYGON_RENDERER = "/vision_utilities/rendering/polygons"

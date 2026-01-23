@@ -1,8 +1,8 @@
 from typing import List
-import numpy as np
+
 from cv2.typing import MatLike
-import random
 from ultralytics.engine.results import Results
+
 from utils import models_manager
 
 
@@ -12,4 +12,3 @@ def get_predictions(image: MatLike):
     results: List[Results] = model.predict(source=image, save=False, device="cpu")
 
     return results[0]
-

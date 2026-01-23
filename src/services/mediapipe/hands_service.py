@@ -12,7 +12,7 @@ from perception_msgs.srv import (
 from sensor_msgs.msg import Image
 
 import constants
-from common import models_manager
+from utils import models_manager
 from utils.camera_topic import CameraTopic
 
 
@@ -74,14 +74,18 @@ class HandsService:
     def handle_hand_detection(self, req: ToggleDetectionTopicRequest):
         response = ToggleDetectionTopicResponse()
         if req.state:
+            if self.active and self.sid is not None:
+                self.camera.unsubscribe(self.sid)
+            frames_interval = max(1, req.frames_interval)
             self.active = True
             self.sid = self.camera.subscribe(
-                self.camera_subscriber, wait_turns=req.frames_interval
+                self.camera_subscriber, wait_turns=frames_interval
             )
             response.state = "Activated"
         else:
             self.active = False
             if self.sid is not None:
                 self.camera.unsubscribe(self.sid)
+                self.sid = None
             response.state = "Deactivated"
         return response

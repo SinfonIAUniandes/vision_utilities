@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-import rospy
 import cv2
-from sensor_msgs.msg import Image
+import rospy
 from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
 
 import constants
+
 
 def main():
     rospy.init_node(constants.WEBCAM_PUBLISHER_NAME, anonymous=True)
@@ -16,6 +17,7 @@ def main():
     while not rospy.is_shutdown():
         ret, frame = cap.read()
         if not ret:
+            rate.sleep()
             continue
         msg = bridge.cv2_to_imgmsg(frame, encoding="bgr8")
         pub.publish(msg)
@@ -23,5 +25,6 @@ def main():
 
     cap.release()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

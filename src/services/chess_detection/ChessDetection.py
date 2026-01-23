@@ -1,9 +1,9 @@
 import time
+from typing import Dict
 
 import cv2
 import numpy as np
 import rospy
-from cv2.typing import MatLike
 from perception_msgs.srv import (
     detect_chess_srv,
     detect_chess_srvRequest,
@@ -40,8 +40,10 @@ class ChessDetection:
         to_process = cv2.resize(to_process, (640, 640))
 
         board_corners = board_detection.get_corners(to_process)
-        response.board = board_corners.flatten().tolist()
+        if board_corners is None:
+            return response
 
+        response.board = board_corners.flatten().tolist()
         board_corners = np.array(board_corners)
 
         def reorder_corners(pts):
@@ -87,19 +89,19 @@ class ChessDetection:
         confidence = pieces_result.boxes.conf.cpu().numpy().tolist()
         classes = pieces_result.boxes.cls.cpu().numpy().tolist()
 
-        pieces_by_name = {
-            "3": "white_pawn",
-            "9": "black_pawn",
-            "5": "white_rook",
-            "11": "black_rook",
-            "2": "white_knight",
-            "8": "black_knight",
-            "0": "white_bishop",
-            "6": "black_bishop",
-            "1": "white_king",
-            "7": "black_king",
-            "4": "white_queen",
-            "10": "black_queen",
+        pieces_by_name: Dict[int, str] = {
+            3: "white_pawn",
+            9: "black_pawn",
+            5: "white_rook",
+            11: "black_rook",
+            2: "white_knight",
+            8: "black_knight",
+            0: "white_bishop",
+            6: "black_bishop",
+            1: "white_king",
+            7: "black_king",
+            4: "white_queen",
+            10: "black_queen",
         }
 
         pieces_by_cell = {}
@@ -116,7 +118,10 @@ class ChessDetection:
             elif confidence[i] < 0.4:
                 continue
 
-            piece_name = pieces_by_name[pieces_result.names[int(classes[i])]]
+            class_id = int(classes[i])
+            if class_id not in pieces_by_name:
+                continue
+            piece_name = pieces_by_name[class_id]
 
             for cell, polygon in cells.items():
                 if cv2.pointPolygonTest(np.array([polygon]), (x, base_at), False) > 0:

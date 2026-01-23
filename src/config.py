@@ -2,10 +2,14 @@ import sys
 from pathlib import Path
 from typing import List
 
-import yaml
 from pydantic import BaseModel, Field, ValidationError
 
 from utils.ConsoleFormatter import ConsoleFormatter
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 
 class VisionModuleConfiguration(BaseModel):
@@ -81,7 +85,7 @@ def parse_config(args: List[str]) -> VisionModuleConfiguration:
     except ValidationError:
         print(
             ConsoleFormatter.error(
-                f"Vision utilities: The provided configuration is not valid. Check for documentation"
+                "Vision utilities: The provided configuration is not valid. Check for documentation"
             )
         )
         sys.exit(-1)
