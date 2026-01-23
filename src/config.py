@@ -2,10 +2,14 @@ import sys
 from pathlib import Path
 from typing import List
 
-from common.ConsoleFormatter import ConsoleFormatter
 from pydantic import BaseModel, Field, ValidationError
 
-import yaml
+from utils.ConsoleFormatter import ConsoleFormatter
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 
 class VisionModuleConfiguration(BaseModel):
@@ -15,6 +19,8 @@ class VisionModuleConfiguration(BaseModel):
     llm_mode: str = Field(default="ollama")
     vlm_model: str = Field(default="gemma3_12b")
     vlm_max_tokens: int = Field(default=500)
+
+    ia: bool = Field(default=False)
 
 
 def parse_config(args: List[str]) -> VisionModuleConfiguration:
@@ -42,7 +48,11 @@ def parse_config(args: List[str]) -> VisionModuleConfiguration:
             if "max_tokens" in vlm_cfg:
                 received_config["vlm_max_tokens"] = vlm_cfg.get("max_tokens")
     elif config_path.exists() and yaml is None:
-        print(ConsoleFormatter.warning("Vision utilities: PyYAML not installed; skipping config.yaml."))
+        print(
+            ConsoleFormatter.warning(
+                "Vision utilities: PyYAML not installed; skipping config.yaml."
+            )
+        )
 
     for i in range(len(args)):
         argument = args[i]
@@ -75,7 +85,7 @@ def parse_config(args: List[str]) -> VisionModuleConfiguration:
     except ValidationError:
         print(
             ConsoleFormatter.error(
-                f"Vision utilities: The provided configuration is not valid. Check for documentation"
+                "Vision utilities: The provided configuration is not valid. Check for documentation"
             )
         )
         sys.exit(-1)

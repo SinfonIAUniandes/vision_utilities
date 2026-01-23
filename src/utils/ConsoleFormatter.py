@@ -15,23 +15,24 @@ class ConsoleFormatter:
     def __init__(self):
         self.colors = {
             "HEADER": "\033[95m",
+            "ENDC": "\033[0m",
         }
 
-    def format(self, text, format):
+    def format(self, text, format_name):
         """
         Given a text and a specified format returns the text with the corresponding color for console.
 
         Args:
             text (str): Text to be formatted.
-            format (str): Format that represents the color to be formatted.
+            format_name (str): Format that represents the color to be formatted.
 
         Raises:
-            KeyError: If format is not a key in the dictionary of the attribute colors.
+            KeyError: If format_name is not a key in the dictionary of the attribute colors.
 
         Returns:
             Returns the text formatted with the color for console corresponding to the format especified.
         """
-        return self.colors[format] + text + self.colors["ENDC"]
+        return self.colors[format_name] + text + self.colors["ENDC"]
 
     @staticmethod
     def okgreen(text: str) -> str:
