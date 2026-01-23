@@ -1,5 +1,17 @@
 # Configuration file for Vision Utilities
+
+# Robot and Camera Configuration
+with_pepper: false  # Set to true if using Pepper robot, false for local camera
+start_cameras: false  # Set to true to automatically start camera on initialization
+
 vlm:
-  llm_mode: "ollama"  # Options: "ollama", "openai"
-  model: "gemma3_12b" # Options: "GPT-4o", "gemma3:270m", "gemma3:4b", "gemma3_12b" etc.
+  llm_mode: "openai"  # Options: "ollama", "openai"
+  model: "GPT-4o" # Options: "GPT-4o", "gemma3_4b", "gemma3_12b" etc.
   max_tokens: 500
+
+coco_detection:
+  model_name: "yolo11n"  # YOLO model name (e.g., "yolo11n", "yolo11s", "yolo11m", etc.)
+  device: "auto"  # Options: "auto", "npu", "cuda", "cpu" - "auto" will detect cuda if available, otherwise cpu
+
+# Enable AI/IA-dependent services (face landmarks, pose, hands, chess detection)
+ia: true

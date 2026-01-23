@@ -15,6 +15,7 @@ from perception_msgs.srv import (
 from sensor_msgs.msg import Image
 
 import constants
+from config import VisionModuleConfiguration
 from utils import models_manager
 from utils.camera_topic import CameraTopic
 
@@ -23,8 +24,9 @@ class COCOObjectDetectionService:
     bridge = CvBridge()
     active = False
 
-    def __init__(self, camera: str):
-        self.model_name = "yolo11n"
+    def __init__(self, camera: str, config: VisionModuleConfiguration):
+        self.model_name = config.coco_model_name
+        self.config_device = config.coco_device
         self._detect_device()
 
         print(f"Iniciando servicio de detección en modo: {self.device}")
@@ -36,7 +38,7 @@ class COCOObjectDetectionService:
             )
             self.model = None
         else:
-            print("Cargando modelo localmente...")
+            print(f"Cargando modelo {self.model_name} localmente...")
             self.model = models_manager.get_yolo_model(self.model_name)
             if self.device != "cpu":
                 self.model.to(self.device)
@@ -53,15 +55,22 @@ class COCOObjectDetectionService:
         self.sid = None
 
     def _detect_device(self):
-        try:
-            import torch
-
-            if torch.cuda.is_available():
-                self.device = "cuda"
-            else:
-                self.device = "cpu"
-        except ImportError:
+        if self.config_device == "npu":
+            self.device = "npu"
+        elif self.config_device == "cpu":
             self.device = "cpu"
+        elif self.config_device == "cuda":
+            self.device = "cuda"
+        else:  # "auto" or any other value
+            try:
+                import torch
+
+                if torch.cuda.is_available():
+                    self.device = "cuda"
+                else:
+                    self.device = "cpu"
+            except ImportError:
+                self.device = "cpu"
 
     def camera_subscriber(self, image: MatLike):
         try:

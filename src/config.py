@@ -19,6 +19,9 @@ class VisionModuleConfiguration(BaseModel):
     llm_mode: str = Field(default="ollama")
     vlm_model: str = Field(default="gemma3_12b")
     vlm_max_tokens: int = Field(default=500)
+    # COCO Detection configuration (loaded from config.yaml under `coco_detection:`)
+    coco_model_name: str = Field(default="yolo11n")
+    coco_device: str = Field(default="auto")
 
     ia: bool = Field(default=False)
 
@@ -47,6 +50,24 @@ def parse_config(args: List[str]) -> VisionModuleConfiguration:
                 received_config["vlm_model"] = vlm_cfg.get("model")
             if "max_tokens" in vlm_cfg:
                 received_config["vlm_max_tokens"] = vlm_cfg.get("max_tokens")
+        
+        coco_cfg = data.get("coco_detection") or {}
+        # Map COCO detection configuration
+        if isinstance(coco_cfg, dict):
+            if "model_name" in coco_cfg:
+                received_config["coco_model_name"] = coco_cfg.get("model_name")
+            if "device" in coco_cfg:
+                received_config["coco_device"] = coco_cfg.get("device")
+        
+        # Map IA configuration
+        if "ia" in data:
+            received_config["ia"] = data.get("ia")
+        
+        # Map robot and camera configuration
+        if "with_pepper" in data:
+            received_config["with_pepper"] = data.get("with_pepper")
+        if "start_cameras" in data:
+            received_config["start_cameras"] = data.get("start_cameras")
     elif config_path.exists() and yaml is None:
         print(
             ConsoleFormatter.warning(

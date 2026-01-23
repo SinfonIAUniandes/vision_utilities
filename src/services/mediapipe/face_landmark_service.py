@@ -34,6 +34,7 @@ class FaceLandmarkService:
         self.image_pub = rospy.Publisher(
             constants.TOPIC_FACE_LANDMARKS, Polygon, queue_size=10
         )
+        print(self.image_pub)
         self.camera = CameraTopic(camera)
         self.sid = None
 

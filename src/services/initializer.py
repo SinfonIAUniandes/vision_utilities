@@ -48,7 +48,6 @@ def initialize(camera: str, config: VisionModuleConfiguration, enable_ia: bool =
         init_cameras()
 
     QrCodeScanner(camera)
-    COCOObjectDetectionService(camera)
     NanoOWLObjectDetectionService(camera)
     VLMService(camera, config.llm_mode, config.vlm_model, config.vlm_max_tokens)
 
@@ -61,3 +60,4 @@ def initialize(camera: str, config: VisionModuleConfiguration, enable_ia: bool =
         FaceLandmarkService(camera)
         PoseService(camera)
         HandsService(camera)
+        COCOObjectDetectionService(camera, config)
