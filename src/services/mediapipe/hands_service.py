@@ -12,6 +12,7 @@ from perception_msgs.srv import (
 from sensor_msgs.msg import Image
 
 import constants
+from config import VisionModuleConfiguration
 from utils import models_manager
 from utils.camera_topic import CameraTopic
 
@@ -20,11 +21,14 @@ class HandsService:
     bridge = CvBridge()
     active = False
 
-    def __init__(self, camera: str):
+    def __init__(self, camera: str, config: VisionModuleConfiguration):
         self.model_asset_path = models_manager.get_mediapipe_path("hand_landmarker")
-        self.image_pub = rospy.Publisher(
-            constants.TOPIC_HAND_LANDMARKS, Image, queue_size=10
-        )
+        self.config = config
+        self.image_pub = None
+        if "hand_landmarks" in config.publish_visualizations:
+            self.image_pub = rospy.Publisher(
+                constants.TOPIC_HAND_LANDMARKS, Image, queue_size=10
+            )
         self.service = rospy.Service(
             constants.SERVICE_DETECT_HAND_LANDMARKS,
             ToggleDetectionTopic,
@@ -66,10 +70,11 @@ class HandsService:
         rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         detection_result = self.detector.process(rgb_frame)
         annotated_image = self.draw_landmarks_on_image(rgb_frame, detection_result)
-        annotated_image_msg = self.bridge.cv2_to_imgmsg(
-            annotated_image, encoding="bgr8"
-        )
-        self.image_pub.publish(annotated_image_msg)
+        if self.image_pub is not None:
+            annotated_image_msg = self.bridge.cv2_to_imgmsg(
+                annotated_image, encoding="bgr8"
+            )
+            self.image_pub.publish(annotated_image_msg)
 
     def handle_hand_detection(self, req: ToggleDetectionTopicRequest):
         response = ToggleDetectionTopicResponse()

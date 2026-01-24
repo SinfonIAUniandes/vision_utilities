@@ -22,6 +22,9 @@ class VisionModuleConfiguration(BaseModel):
     # COCO Detection configuration (loaded from config.yaml under `coco_detection:`)
     coco_model_name: str = Field(default="yolo11n")
     coco_device: str = Field(default="auto")
+    # Publication configuration
+    publish_data: list = Field(default_factory=list)
+    publish_visualizations: list = Field(default_factory=list)
 
     ia: bool = Field(default=False)
 
@@ -68,6 +71,12 @@ def parse_config(args: List[str]) -> VisionModuleConfiguration:
             received_config["with_pepper"] = data.get("with_pepper")
         if "start_cameras" in data:
             received_config["start_cameras"] = data.get("start_cameras")
+        
+        # Map publish configuration
+        if "publish_data" in data:
+            received_config["publish_data"] = data.get("publish_data", [])
+        if "publish_visualizations" in data:
+            received_config["publish_visualizations"] = data.get("publish_visualizations", [])
     elif config_path.exists() and yaml is None:
         print(
             ConsoleFormatter.warning(

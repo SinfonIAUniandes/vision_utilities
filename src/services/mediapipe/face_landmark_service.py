@@ -15,6 +15,7 @@ from perception_msgs.srv import (
 )
 
 import constants
+from config import VisionModuleConfiguration
 from utils import models_manager
 from utils.camera_topic import CameraTopic
 
@@ -23,18 +24,21 @@ class FaceLandmarkService:
     bridge = CvBridge()
     active = False
 
-    def __init__(self, camera: str):
+    def __init__(self, camera: str, config: VisionModuleConfiguration):
         self.model_asset_path = models_manager.get_mediapipe_path("face_landmarker")
         self.detector = self.initialize_face_landmarker()
+        self.config = config
         self.service = rospy.Service(
             constants.SERVICE_DETECT_FACE_LANDMARKS,
             ToggleDetectionTopic,
             self.handle_face_landmark_detection,
         )
-        self.image_pub = rospy.Publisher(
-            constants.TOPIC_FACE_LANDMARKS, Polygon, queue_size=10
-        )
-        print(self.image_pub)
+        self.image_pub = None
+        if "face_landmarks" in config.publish_visualizations:
+            self.image_pub = rospy.Publisher(
+                constants.TOPIC_FACE_LANDMARKS, Polygon, queue_size=10
+            )
+            print(self.image_pub)
         self.camera = CameraTopic(camera)
         self.sid = None
 
@@ -73,10 +77,11 @@ class FaceLandmarkService:
 
         polygons = self.get_landmark_polygons(detection_result)
 
-        response = Polygon()
-        response.label = "face"
-        response.polygon = polygons
-        self.image_pub.publish(response)
+        if polygons and self.image_pub is not None:
+            response = Polygon()
+            response.label = "face"
+            response.polygon = polygons
+            self.image_pub.publish(response)
 
     def handle_face_landmark_detection(self, req: ToggleDetectionTopicRequest):
         response = ToggleDetectionTopicResponse()

@@ -15,3 +15,18 @@ coco_detection:
 
 # Enable AI/IA-dependent services (face landmarks, pose, hands, chess detection)
 ia: true
+
+publish_visualizations: [
+  "face_landmarks",
+  "pose_landmarks",
+  "hand_landmarks",
+  "coco_detections",
+  "owl_detections"
+]
+
+publish_data: [
+  "coco_bboxes",
+  "owl_bboxes",
+  "polygon_data"
+] # Options: "coco_bboxes", "owl_bboxes", "polygon_data"
+

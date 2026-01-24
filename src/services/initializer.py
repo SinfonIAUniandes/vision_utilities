@@ -48,7 +48,7 @@ def initialize(camera: str, config: VisionModuleConfiguration, enable_ia: bool =
         init_cameras()
 
     QrCodeScanner(camera)
-    NanoOWLObjectDetectionService(camera)
+    NanoOWLObjectDetectionService(camera, config)
     VLMService(camera, config.llm_mode, config.vlm_model, config.vlm_max_tokens)
 
     # TORCH DEPENDENT SERVICES
@@ -57,7 +57,7 @@ def initialize(camera: str, config: VisionModuleConfiguration, enable_ia: bool =
         from .mediapipe.face_landmark_service import FaceLandmarkService
 
         ChessDetection(camera)
-        FaceLandmarkService(camera)
-        PoseService(camera)
-        HandsService(camera)
+        FaceLandmarkService(camera, config)
+        PoseService(camera, config)
+        HandsService(camera, config)
         COCOObjectDetectionService(camera, config)

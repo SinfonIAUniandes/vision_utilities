@@ -12,6 +12,7 @@ from perception_msgs.srv import (
     ToggleDetectionTopicRequest,
     ToggleDetectionTopicResponse,
 )
+from perception_msgs.msg import get_labels_msg
 from sensor_msgs.msg import Image
 
 import constants
@@ -27,6 +28,7 @@ class COCOObjectDetectionService:
     def __init__(self, camera: str, config: VisionModuleConfiguration):
         self.model_name = config.coco_model_name
         self.config_device = config.coco_device
+        self.config = config
         self._detect_device()
 
         print(f"Iniciando servicio de detección en modo: {self.device}")
@@ -43,9 +45,16 @@ class COCOObjectDetectionService:
             if self.device != "cpu":
                 self.model.to(self.device)
 
-        self.image_pub = rospy.Publisher(
-            constants.TOPIC_COCO_DETECTIONS, Image, queue_size=10
-        )
+        self.image_pub = None
+        if "coco_detections" in config.publish_visualizations:
+            self.image_pub = rospy.Publisher(
+                constants.TOPIC_COCO_DETECTIONS, Image, queue_size=10
+            )
+        self.bboxes_pub = None
+        if "coco_bboxes" in config.publish_data:
+            self.bboxes_pub = rospy.Publisher(
+                constants.TOPIC_COCO_BBOXES, get_labels_msg, queue_size=10
+            )
         self.service = rospy.Service(
             constants.SERVICE_DETECT_COCO_OBJECTS,
             ToggleDetectionTopic,
@@ -75,16 +84,20 @@ class COCOObjectDetectionService:
     def camera_subscriber(self, image: MatLike):
         try:
             if self.device == "npu":
-                annotated_image = asyncio.run(self.process_via_websocket(image))
+                annotated_image, bboxes_data = asyncio.run(self.process_via_websocket(image))
             else:
                 results = self.model(image)
                 annotated_image = results[0].plot()
+                bboxes_data = self._extract_bboxes_from_results(results[0])
 
-            if annotated_image is not None:
+            if annotated_image is not None and self.image_pub is not None:
                 annotated_msg = self.bridge.cv2_to_imgmsg(
                     annotated_image, encoding="bgr8"
                 )
                 self.image_pub.publish(annotated_msg)
+            
+            if bboxes_data is not None and self.bboxes_pub is not None:
+                self.bboxes_pub.publish(bboxes_data)
         except Exception as e:
             rospy.logerr(f"Error en el procesamiento de imagen: {e}")
 
@@ -96,13 +109,15 @@ class COCOObjectDetectionService:
                 await websocket.send(buffer.tobytes())
                 response = await websocket.recv()
                 data = json.loads(response)
-                return self.draw_detections(frame, data)
+                annotated_frame = self.draw_detections(frame, data)
+                bboxes_data = self._extract_bboxes_from_websocket(data)
+                return annotated_frame, bboxes_data
         except (websockets.exceptions.ConnectionClosed, ConnectionRefusedError) as e:
             rospy.logwarn_throttle(5, f"No se pudo conectar al WebSocket: {e}")
-            return frame
+            return frame, None
         except Exception as e:
             rospy.logerr(f"Error en websocket logic: {e}")
-            return frame
+            return frame, None
 
     def draw_detections(self, frame, data):
         for det in data.get("detections", []):
@@ -118,6 +133,50 @@ class COCOObjectDetectionService:
                 frame, label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1
             )
         return frame
+
+    def _extract_bboxes_from_websocket(self, data):
+        """Extract bounding boxes from websocket response and create message."""
+        msg = get_labels_msg()
+        detections = data.get("detections", [])
+        
+        for det in detections:
+            x1, y1, x2, y2 = det["bbox"]
+            width = x2 - x1
+            height = y2 - y1
+            
+            msg.labels.append(str(det.get("class", "unknown")))
+            msg.x_coordinates.append(float(x1))
+            msg.y_coordinates.append(float(y1))
+            msg.widths.append(float(width))
+            msg.heights.append(float(height))
+            msg.ids.append(float(det.get("id", -1)))
+        
+        return msg if detections else None
+
+    def _extract_bboxes_from_results(self, results):
+        """Extract bounding boxes from YOLO results and create message."""
+        msg = get_labels_msg()
+        
+        if hasattr(results, 'boxes') and results.boxes is not None:
+            boxes = results.boxes
+            for i, box in enumerate(boxes):
+                # Get bounding box coordinates
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+                width = x2 - x1
+                height = y2 - y1
+                
+                # Get class and confidence
+                class_id = int(box.cls[0]) if box.cls is not None else 0
+                confidence = float(box.conf[0]) if box.conf is not None else 0.0
+                
+                msg.labels.append(str(class_id))
+                msg.x_coordinates.append(float(x1))
+                msg.y_coordinates.append(float(y1))
+                msg.widths.append(float(width))
+                msg.heights.append(float(height))
+                msg.ids.append(float(i))
+        
+        return msg if msg.labels else None
 
     def handle_coco_object_detection(self, req: ToggleDetectionTopicRequest):
         response = ToggleDetectionTopicResponse()
