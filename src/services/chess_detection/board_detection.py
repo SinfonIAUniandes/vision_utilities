@@ -1,11 +1,19 @@
-from typing import List
-import numpy as np
-import cv2
 import random
-from ultralytics.engine.results import Results
-from deap import base, creator, tools, algorithms
+from typing import List, Optional
 
-from common import models_manager
+import cv2
+import numpy as np
+from deap import algorithms, base, creator, tools
+from ultralytics.engine.results import Results
+
+from utils import models_manager
+
+
+def _ensure_deap_types():
+    if not hasattr(creator, "FitnessMin"):
+        creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+    if not hasattr(creator, "Individual"):
+        creator.create("Individual", list, fitness=creator.FitnessMin)
 
 
 class GeneticBoard:
@@ -19,8 +27,7 @@ class GeneticBoard:
         self.mutpb = 0.3
         self.ind_size = 8
 
-        creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-        creator.create("Individual", list, fitness=creator.FitnessMin)
+        _ensure_deap_types()
 
         self.toolbox = base.Toolbox()
         self.toolbox.register(
@@ -142,10 +149,13 @@ class GeneticBoard:
         ]
 
 
-def get_corners(image: np.ndarray) -> List[int]:
+def get_corners(image: np.ndarray) -> Optional[np.ndarray]:
     model = models_manager.get_yolo_model("chess_board")
 
     results: List[Results] = model.predict(source=image, save=False, device="cpu")
+
+    if not results or results[0].masks is None or len(results[0].masks.data) == 0:
+        return None
 
     mask = results[0].masks.data[0].cpu().numpy()
     mask = cv2.resize(mask, (image.shape[1], image.shape[0]))

@@ -1,39 +1,30 @@
-import rospy
-import time
-
-from perception_msgs.srv import read_qr_srv, read_qr_srvRequest
-from sensor_msgs.msg import Image
-from robot_toolkit_msgs.msg import vision_tools_msg
-from robot_toolkit_msgs.srv import vision_tools_srv
-from config import VisionModuleConfiguration
-import constants
+from typing import Optional
 
 import cv2
-from cv_bridge import CvBridge
+import rospy
+from cv2.typing import MatLike
+from perception_msgs.srv import read_qr_srv, read_qr_srvRequest
+
+import constants
+from utils.camera_topic import CameraTopic
 
 
 class QrCodeScanner:
-    bridge = CvBridge()
-    image = None
-
     def __init__(self, camera: str):
         rospy.Service(constants.SERVICE_READ_QR, read_qr_srv, self.callback)
-        rospy.Subscriber(camera, Image, self.camera_subscriber)
+        self.camera = CameraTopic(camera)
+        self.detector = cv2.QRCodeDetector()
 
-    def camera_subscriber(self, msg: Image):
-        self.image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+    def detect_qr(self, image: MatLike) -> Optional[str]:
+        try:
+            value, _, _ = self.detector.detectAndDecode(image)
+            return value if value else None
+        except:
+            return None
 
     def callback(self, request: read_qr_srvRequest):
-        start = time.time()
-
-        while time.time() - start < request.timeout:
-            try:
-                detector = cv2.QRCodeDetector()
-
-                value, _, _ = detector.detectAndDecode(self.image)
-
-                if value != "":
-                    return value
-            except:
-                continue
-        return ""
+        result = self.camera.process_until(
+            processor=self.detect_qr,
+            timeout=request.timeout,
+        )
+        return result if result else ""

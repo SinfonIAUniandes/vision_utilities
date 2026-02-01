@@ -1,20 +1,17 @@
 import rospy
-
-from .qrcode_detection.QrCodeScanner import QrCodeScanner
-from .chess_detection.ChessDetection import ChessDetection
-from .YOLO_based.coco_detection import COCOObjectDetectionService
-from .OWL.nanoowl_detection_websocket import NanoOWLObjectDetectionService
-from .mediapipe.face_landmark_service import FaceLandmarkService
-from .mediapipe.pose_service import PoseService
-from .mediapipe.hands_service import HandsService
-from .vlm.img_description import VLMService
-from config import VisionModuleConfiguration
-from common import ConsoleFormatter
-
 from robot_toolkit_msgs.msg import vision_tools_msg
 from robot_toolkit_msgs.srv import vision_tools_srv
 
 import constants
+from config import VisionModuleConfiguration
+from utils import ConsoleFormatter
+
+from .mediapipe.hands_service import HandsService
+from .mediapipe.pose_service import PoseService
+from .OWL.nanoowl_detection_websocket import NanoOWLObjectDetectionService
+from .qrcode_detection.QrCodeScanner import QrCodeScanner
+from .vlm.img_description import VLMService
+from .YOLO_based.coco_detection import COCOObjectDetectionService
 
 
 def init_cameras():
@@ -46,15 +43,21 @@ def vision_tools_service(msg):
         print(ConsoleFormatter.error("Vision call failed"))
 
 
-def initialize(camera: str, config: VisionModuleConfiguration):
+def initialize(camera: str, config: VisionModuleConfiguration, enable_ia: bool = False):
     if config.start_cameras:
         init_cameras()
 
     QrCodeScanner(camera)
-    ChessDetection(camera)
-    COCOObjectDetectionService(camera)
-    NanoOWLObjectDetectionService(camera)
-    FaceLandmarkService(camera)
-    PoseService(camera)
-    HandsService(camera)
+    NanoOWLObjectDetectionService(camera, config)
     VLMService(camera, config.llm_mode, config.vlm_model, config.vlm_max_tokens)
+
+    # TORCH DEPENDENT SERVICES
+    if enable_ia:
+        from .chess_detection.ChessDetection import ChessDetection
+        from .mediapipe.face_landmark_service import FaceLandmarkService
+
+        ChessDetection(camera)
+        FaceLandmarkService(camera, config)
+        PoseService(camera, config)
+        HandsService(camera, config)
+        COCOObjectDetectionService(camera, config)

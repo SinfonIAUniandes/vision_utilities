@@ -1,30 +1,41 @@
-from common import models_manager
-from cv_bridge import CvBridge
-from sensor_msgs.msg import Image
-from perception_msgs.srv import ToggleDetectionTopicRequest, ToggleDetectionTopicResponse, ToggleDetectionTopic
-from mediapipe.framework.formats import landmark_pb2
-from mediapipe.tasks.python import vision
-from mediapipe.tasks.python.core.base_options import BaseOptions
-from mediapipe.tasks.python.vision import PoseLandmarker, PoseLandmarkerOptions
-from pathlib import Path
-import rospy
 import cv2
 import mediapipe as mp
 import numpy as np
+import rospy
+from cv2.typing import MatLike
+from cv_bridge import CvBridge
+from perception_msgs.srv import (
+    ToggleDetectionTopic,
+    ToggleDetectionTopicRequest,
+    ToggleDetectionTopicResponse,
+)
+from sensor_msgs.msg import Image
+
 import constants
+from config import VisionModuleConfiguration
+from utils import models_manager
+from utils.camera_topic import CameraTopic
+
 
 class PoseService:
     bridge = CvBridge()
-    image = None
     active = False
 
-    def __init__(self, camera: str):
-        self.active = False
+    def __init__(self, camera: str, config: VisionModuleConfiguration):
         self.model_asset_path = models_manager.get_mediapipe_path("pose_landmarker")
-        self.image_pub = rospy.Publisher(constants.TOPIC_POSE_LANDMARKS, Image, queue_size=10)
-        self.service = rospy.Service(constants.SERVICE_DETECT_POSE_LANDMARKS, ToggleDetectionTopic, self.handle_pose_detection)
-        mp_pose = mp.solutions.pose
+        self.config = config
+        self.image_pub = None
+        if "pose_landmarks" in config.publish_visualizations:
+            self.image_pub = rospy.Publisher(
+                constants.TOPIC_POSE_LANDMARKS, Image, queue_size=10
+            )
+        self.service = rospy.Service(
+            constants.SERVICE_DETECT_POSE_LANDMARKS,
+            ToggleDetectionTopic,
+            self.handle_pose_detection,
+        )
 
+        mp_pose = mp.solutions.pose
         self.drawing_styles = mp.solutions.drawing_styles
         self.drawing_utils = mp.solutions.drawing_utils
         self.pose_connections = mp.solutions.pose
@@ -33,9 +44,10 @@ class PoseService:
             model_complexity=1,
             enable_segmentation=False,
             min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+            min_tracking_confidence=0.5,
         )
-        rospy.Subscriber(camera, Image, self.camera_subscriber)
+        self.camera = CameraTopic(camera)
+        self.sid = None
 
     def draw_landmarks_on_image(self, rgb_image, detection_result):
         rgb_image.flags.writeable = True
@@ -45,38 +57,40 @@ class PoseService:
                 rgb_image,
                 detection_result.pose_landmarks,
                 self.pose_connections.POSE_CONNECTIONS,
-                self.drawing_utils.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=2),
-                self.drawing_utils.DrawingSpec(color=(0,0,255), thickness=2, circle_radius=2)
+                self.drawing_utils.DrawingSpec(
+                    color=(0, 255, 0), thickness=2, circle_radius=2
+                ),
+                self.drawing_utils.DrawingSpec(
+                    color=(0, 0, 255), thickness=2, circle_radius=2
+                ),
             )
-        annotated_image = np.copy(rgb_image)
+        return np.copy(rgb_image)
 
-        return annotated_image
-
-    def camera_subscriber(self, msg: Image):
-        self.image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-
-        if not self.active:
-            return
-
-        if self.image is None:
-            rospy.logerr("No image received from camera.")
-            return
-
-        rgb_frame = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
+    def camera_subscriber(self, image: MatLike):
+        rgb_frame = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         detection_result = self.detector.process(rgb_frame)
-
-        # Process the detection result - Visualize it
         annotated_image = self.draw_landmarks_on_image(rgb_frame, detection_result)
-
-        annotated_image_msg = self.bridge.cv2_to_imgmsg(annotated_image, encoding="bgr8")
-        self.image_pub.publish(annotated_image_msg)
+        if self.image_pub is not None:
+            annotated_image_msg = self.bridge.cv2_to_imgmsg(
+                annotated_image, encoding="bgr8"
+            )
+            self.image_pub.publish(annotated_image_msg)
 
     def handle_pose_detection(self, req: ToggleDetectionTopicRequest):
         response = ToggleDetectionTopicResponse()
         if req.state:
+            if self.active and self.sid is not None:
+                self.camera.unsubscribe(self.sid)
+            frames_interval = max(1, req.frames_interval)
             self.active = True
+            self.sid = self.camera.subscribe(
+                self.camera_subscriber, wait_turns=frames_interval
+            )
+            response.state = "Activated"
         else:
             self.active = False
-            
-        response.state = "Active:" + str(self.active)
+            if self.sid is not None:
+                self.camera.unsubscribe(self.sid)
+                self.sid = None
+            response.state = "Deactivated"
         return response

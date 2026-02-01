@@ -2,8 +2,9 @@
 
 from pathlib import Path
 
-
 NODE_NAME = "vision_utilities"
+WEBCAM_PUBLISHER_NAME = "vision_utilities_webcam_publisher"
+POLYGON_RENDERING_NAME = "vision_utilities_polygon_rendering"
 
 # Used services
 
@@ -17,6 +18,7 @@ MODELS_FOLDER = Path(__file__).parent / "../models"
 
 PEPPER_FRONT_CAMERA = "/robot_toolkit_node/camera/front/image_raw"
 LOCAL_FRONT_CAMERA = "/camera/image_raw"
+LOCAL_FRONT_CAMERA = "/usb_cam/image_raw"
 
 FRONT_CAMERA_NAME = "front_camera"
 
@@ -37,5 +39,10 @@ SERVICE_VLM = "/vision_utilities/recognition/vlm_srv"
 TOPIC_FACE_LANDMARKS = "/vision_utilities/recognition/face_landmarks_image"
 TOPIC_POSE_LANDMARKS = "/vision_utilities/recognition/pose_landmarks_image"
 TOPIC_COCO_DETECTIONS = "/vision_utilities/recognition/coco_detections_image"
+TOPIC_COCO_BBOXES = "/vision_utilities/recognition/coco_bboxes"
 TOPIC_OWL_DETECTIONS = "/vision_utilities/recognition/owl_detections_image"
+TOPIC_OWL_BBOXES = "/vision_utilities/recognition/owl_bboxes"
 TOPIC_HAND_LANDMARKS = "/vision_utilities/recognition/hand_landmarks_image"
+SERVICE_RENDER_POLYGON_TOPIC = "/vision_utilities/rendering/visualize_polygon_topic_srv"
+
+TOPIC_POLYGON_RENDERER = "/vision_utilities/rendering/polygons"
