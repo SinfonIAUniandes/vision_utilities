@@ -120,6 +120,7 @@ class COCOObjectDetectionService:
             return frame, None
 
     def draw_detections(self, frame, data):
+        frame = frame.copy() # Evitar modificar la imagen original
         for det in data.get("detections", []):
             x1, y1, x2, y2 = map(int, det["bbox"])
             confidence = det["confidence"]
