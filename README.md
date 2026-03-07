@@ -16,6 +16,15 @@ git clone git@github.com:SinfonIAUniandes/vision_utilities.git
 
 ```
 
+**Required Message Packages:**
+This package requires custom ROS messages to compile and run correctly. You must also clone these repositories into your workspace's `src` folder:
+
+```bash
+git clone git@github.com:SinfonIAUniandes/robot_toolkit_msgs.git
+git clone git@github.com:SinfonIAUniandes/perception_msgs.git
+
+```
+
 ### 2. Install Dependencies
 
 This repo contains three different requirement files. Choose the one that fits your needs and install it via `pip`:

@@ -169,7 +169,8 @@ class COCOObjectDetectionService:
                 class_id = int(box.cls[0]) if box.cls is not None else 0
                 confidence = float(box.conf[0]) if box.conf is not None else 0.0
                 
-                msg.labels.append(str(class_id))
+                label_name = results.names[class_id] if hasattr(results, 'names') else str(class_id)
+                msg.labels.append(label_name)
                 msg.x_coordinates.append(float(x1))
                 msg.y_coordinates.append(float(y1))
                 msg.widths.append(float(width))
