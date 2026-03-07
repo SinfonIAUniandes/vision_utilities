@@ -17,7 +17,6 @@ MODELS_FOLDER = Path(__file__).parent / "../models"
 # Cameras
 
 PEPPER_FRONT_CAMERA = "/robot_toolkit_node/camera/front/image_raw"
-LOCAL_FRONT_CAMERA = "/camera/image_raw"
 LOCAL_FRONT_CAMERA = "/usb_cam/image_raw"
 
 FRONT_CAMERA_NAME = "front_camera"
