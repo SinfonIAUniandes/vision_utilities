@@ -90,7 +90,6 @@ class VLMService:
                 model=model,
                 messages=messages,
                 temperature=temperature,
-                max_tokens=self.max_tokens,
             )
             return answer.choices[0].message.content
         except Exception as e:
