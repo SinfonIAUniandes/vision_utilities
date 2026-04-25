@@ -31,11 +31,19 @@ class FaceDetectionService:
     bridge = CvBridge()
     active = False
 
+
+
     def __init__(self, camera: str, config: VisionModuleConfiguration):
         self.config = config
         self.model_name = "Facenet512"
         self.distance_threshold = 15
-        self.db_path = "data/facial_recognition.db"
+
+        current_dir = os.path.dirname(os.path.realpath(__file__))
+        src_dir = os.path.abspath(os.path.join(current_dir, "../../"))
+        if src_dir not in sys.path:
+            sys.path.insert(0, src_dir)
+        
+        self.db_path = os.path.join(current_dir, "data/facial_recognition.db")
         self.save_count = 0
         self.save_name = ""
 
@@ -49,17 +57,17 @@ class FaceDetectionService:
             self.handle_face_recognition_toggle,
         )
         self.save_service = rospy.Service(
-            "save_face",
+            constants.TOPIC_FACE_RECOGNITION+"/save_face",
             save_face_srv,
             self.handle_save_face,
         )
         self.clear_service = rospy.Service(
-            "clear_face_data",
+            constants.TOPIC_FACE_RECOGNITION+"/clear_face_data",
             remove_faces_data_srv,
             self.handle_clear_embeddings,
         )
         self.count_service = rospy.Service(
-            "get_face_count",
+            constants.TOPIC_FACE_RECOGNITION+"/get_faces_saved",
             get_labels_srv,
             self.handle_get_names_count,
         )
@@ -67,7 +75,7 @@ class FaceDetectionService:
         self.image_pub = None
         if "face_recognition" in config.publish_visualizations:
             self.image_pub = rospy.Publisher(
-                constants.TOPIC_FACE_RECOGNITION, Image, queue_size=10
+                constants.TOPIC_FACE_RECOGNITION+"/face_recognition_image", Image, queue_size=10
             )
 
         self.camera = CameraTopic(camera)
@@ -224,25 +232,20 @@ class FaceDetectionService:
         cursor.execute("SELECT DISTINCT name FROM embeddings")
         names = [row[0] for row in cursor.fetchall()]
         conn.close()
+        
         res = get_labels_srvResponse()
-        res.labels = names 
+        res.labels = ", ".join(names) if names else "None"
         return res
 
 if __name__ == "__main__":
-
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    src_dir = os.path.abspath(os.path.join(current_dir, "../../"))
-    if src_dir not in sys.path:
-        sys.path.insert(0, src_dir)
-
     rospy.init_node("face_detection_service_node")
 
     try:
-        from config import VisionModuleConfiguration
-        config = VisionModuleConfiguration()
-
         camera_topic = rospy.get_param("~camera_topic", "usb_cam/image_raw")
         
+        from config import VisionModuleConfiguration
+        config = VisionModuleConfiguration() 
+
         server = FaceDetectionService(camera_topic, config)
         rospy.loginfo("Face Detection Service is initialized and waiting for requests...")
 

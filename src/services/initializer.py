@@ -6,12 +6,14 @@ import constants
 from config import VisionModuleConfiguration
 from utils import ConsoleFormatter
 
+
 from .mediapipe.hands_service import HandsService
 from .mediapipe.pose_service import PoseService
 from .OWL.nanoowl_detection_websocket import NanoOWLObjectDetectionService
 from .qrcode_detection.QrCodeScanner import QrCodeScanner
 from .vlm.img_description import VLMService
 from .YOLO_based.coco_detection import COCOObjectDetectionService
+from .face_detection.face_detection_service import FaceDetectionService
 
 
 def init_cameras():
@@ -50,6 +52,8 @@ def initialize(camera: str, config: VisionModuleConfiguration, enable_ia: bool =
     QrCodeScanner(camera)
     NanoOWLObjectDetectionService(camera, config)
     VLMService(camera, config.llm_mode, config.vlm_model, config.vlm_max_tokens)
+    FaceDetectionService(camera, config)
+    
 
     # TORCH DEPENDENT SERVICES
     if enable_ia:
