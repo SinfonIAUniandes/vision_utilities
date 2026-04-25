@@ -32,6 +32,7 @@ SERVICE_DETECT_POSE_LANDMARKS = "/vision_utilities/recognition/pose_srv"
 SERVICE_DETECT_HAND_LANDMARKS = "/vision_utilities/recognition/hand_srv"
 SERVICE_READ_IMAGE = "/vision_utilities/recognition/read_image_srv"
 SERVICE_VLM = "/vision_utilities/recognition/vlm_srv"
+SERVICE_FACE_RECOGNITION = "/vision_utilities/recognition/face_recognition_srv"
 
 # Topics
 
@@ -43,5 +44,7 @@ TOPIC_OWL_DETECTIONS = "/vision_utilities/recognition/owl_detections_image"
 TOPIC_OWL_BBOXES = "/vision_utilities/recognition/owl_bboxes"
 TOPIC_HAND_LANDMARKS = "/vision_utilities/recognition/hand_landmarks_image"
 SERVICE_RENDER_POLYGON_TOPIC = "/vision_utilities/rendering/visualize_polygon_topic_srv"
+TOPIC_FACE_RECOGNITION = "/vision_utilities/recognition/face_recognition_image"
+
 
 TOPIC_POLYGON_RENDERER = "/vision_utilities/rendering/polygons"

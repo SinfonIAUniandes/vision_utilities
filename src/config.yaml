@@ -21,7 +21,8 @@ publish_visualizations: [
   "pose_landmarks",
   "hand_landmarks",
   "coco_detections",
-  "owl_detections"
+  "owl_detections",
+  "face_recognition",
 ]
 
 publish_data: [
