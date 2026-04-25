@@ -140,6 +140,11 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(visualizer src/visualizer.cpp)
+add_dependencies(visualizer
+  ${${PROJECT_NAME}_EXPORTED_TARGETS}
+  ${catkin_EXPORTED_TARGETS}
+  ${perception_msgs_EXPORTED_TARGETS}
+)
 target_link_libraries(visualizer ${OpenCV_LIBS} ${catkin_LIBRARIES})
 
 

@@ -2,7 +2,7 @@
 
 # Robot and Camera Configuration
 with_pepper: false  # Set to true if using Pepper robot, false for local camera
-start_cameras: false  # Set to true to automatically start camera on initialization
+start_cameras: false # Set to true to automatically start camera on initialization
 
 vlm:
   llm_mode: "openai"  # Options: "ollama", "openai"
@@ -28,5 +28,5 @@ publish_data: [
   "coco_bboxes",
   "owl_bboxes",
   "polygon_data"
-] # Options: "coco_bboxes", "owl_bboxes", "polygon_data"
+] # Options:, "coco_bboxes", "owl_bboxes", "polygon_data"
 

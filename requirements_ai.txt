@@ -1,3 +1,9 @@
 ultralytics
 deap
-mediapipe
+numpy<2
+opencv-python<4.13
+mediapipe==0.10.14
+jax<0.5
+jaxlib<0.5
+deepface
+tf-keras

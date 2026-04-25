@@ -1,4 +1,4 @@
-numpy
+numpy<2
 PyYAML
 rospkg
 python-dateutil
@@ -12,11 +12,13 @@ matplotlib
 defusedxml
 pydot
 PyOpenGL
-opencv-python
+opencv-python<4.13
 pillow
 pycairo
 pydantic
-mediapipe
+mediapipe==0.10.14
+jax<0.5
+jaxlib<0.5
 ultralytics
 deap
 ruff
