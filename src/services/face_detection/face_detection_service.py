@@ -46,6 +46,9 @@ class FaceDetectionService:
         self.db_path = os.path.join(current_dir, "data/facial_recognition.db")
         self.save_count = 0
         self.save_name = ""
+        self.save_interval = 30
+        self.frame_counter = 0
+        self.detection_interval = 1
 
         db_dir = os.path.dirname(self.db_path)
         if db_dir and not os.path.exists(db_dir):
@@ -171,12 +174,16 @@ class FaceDetectionService:
             rospy.logerr(f"DeepFace extraction failed: {e}")
             return
 
+        center_face = self.get_face_closest_to_center(faces_data, image)
+
         if self.save_count > 0:
-            center_face = self.get_face_closest_to_center(faces_data, image)
-            if center_face and center_face.get('confidence', 0) > 0.8:
-                if self.save_face_from_roi(center_face['face'], self.save_name):
-                    self.save_count -= 1
-                    rospy.loginfo(f"Capturing face for {self.save_name}. Remaining: {self.save_count}")
+            self.frame_counter += self.detection_interval
+            if self.frame_counter >= self.save_interval:
+                if center_face and center_face.get('confidence', 0) > 0.8:
+                    if self.save_face_from_roi(center_face['face'], self.save_name):
+                        self.save_count -= 1
+                        self.frame_counter = 0
+                        rospy.loginfo(f"Capturing face for {self.save_name}. Remaining: {self.save_count}")
 
         if self.image_pub is not None:
             annotated_frame = image.copy()
@@ -185,13 +192,22 @@ class FaceDetectionService:
                     continue
                 
                 area = face_data['facial_area']
-                name = self.identify_face(face_data['face'])
+                
+                if self.save_count > 0 and face_data is center_face:
+                    label = f"Saving {self.save_name}... ({self.save_count} left)"
+                    color = (0, 255, 255) 
+                else:
+                    name = self.identify_face(face_data['face'])
+                    label = name
+                    color = (0, 255, 0) 
+                    if name == "Unknown":
+                        color = (0, 0, 255) 
                 
                 cv2.rectangle(annotated_frame, (area['x'], area['y']), 
-                              (area['x'] + area['w'], area['y'] + area['h']), (0, 255, 0), 2)
+                              (area['x'] + area['w'], area['y'] + area['h']), color, 2)
 
-                cv2.putText(annotated_frame, name, (area['x'], area['y'] - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                cv2.putText(annotated_frame, label, (area['x'], area['y'] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
 
             msg = self.bridge.cv2_to_imgmsg(annotated_frame, encoding="bgr8")
             self.image_pub.publish(msg)
@@ -202,8 +218,8 @@ class FaceDetectionService:
             if self.active and self.sid is not None:
                 self.camera.unsubscribe(self.sid)
             self.active = True
-            frames_interval = max(1, req.frames_interval)
-            self.sid = self.camera.subscribe(self.camera_subscriber, wait_turns=frames_interval)
+            self.detection_interval = max(1, req.frames_interval)
+            self.sid = self.camera.subscribe(self.camera_subscriber, wait_turns=self.detection_interval)
             response.state = "Activated"
         else:
             self.active = False
@@ -214,9 +230,20 @@ class FaceDetectionService:
         return response
 
     def handle_save_face(self, req):
+        if not req.name:
+            rospy.logwarn("Face Detection: Save face requested with empty name.")
+            return save_face_srvResponse(False)
+
+        if self.save_count > 0:
+            rospy.logwarn(f"Face Detection: Save face already in progress for {self.save_name}.")
+            return save_face_srvResponse(False)
+
         self.save_name = req.name
-        self.save_count = 10
-        rospy.loginfo(f"Triggered saving for: {self.save_name}")
+        self.save_count = req.num_pics if req.num_pics > 0 else 1
+        self.save_interval = req.interval if req.interval > 0 else 30
+        self.frame_counter = self.save_interval 
+        
+        rospy.loginfo(f"Triggered saving for: {self.save_name}, num_pics={self.save_count}, interval={self.save_interval}")
         return save_face_srvResponse(True)
 
     def handle_clear_embeddings(self, req):
@@ -235,6 +262,7 @@ class FaceDetectionService:
         
         res = get_labels_srvResponse()
         res.labels = ", ".join(names) if names else "None"
+        res.approved = True
         return res
 
 if __name__ == "__main__":
