@@ -8,6 +8,7 @@ import rospy
 from cv_bridge import CvBridge
 from deepface import DeepFace
 from collections import Counter
+from threading import Event
 from sensor_msgs.msg import Image
 from cv2.typing import MatLike
 
@@ -24,6 +25,8 @@ from perception_msgs.srv import (
     remove_faces_data_srvResponse,
     get_labels_srv,
     get_labels_srvResponse,
+    recognize_face_srv,
+    recognize_face_srvResponse
 )
 
 
@@ -35,15 +38,15 @@ class FaceDetectionService:
 
     def __init__(self, camera: str, config: VisionModuleConfiguration):
         self.config = config
-        self.model_name = "Facenet512"
-        self.distance_threshold = 15
-
         current_dir = os.path.dirname(os.path.realpath(__file__))
         src_dir = os.path.abspath(os.path.join(current_dir, "../../"))
         if src_dir not in sys.path:
             sys.path.insert(0, src_dir)
         
         self.db_path = os.path.join(current_dir, "data/facial_recognition.db")
+        self._init_db()
+        self.model_name = "Facenet512"
+        self.distance_threshold = 15
         self.save_count = 0
         self.save_name = ""
         self.save_interval = 30
@@ -64,6 +67,13 @@ class FaceDetectionService:
             save_face_srv,
             self.handle_save_face,
         )
+
+        self.get_service = rospy.Service(
+            constants.TOPIC_FACE_RECOGNITION+"/get_face",
+            recognize_face_srv,
+            self.handle_get_face,
+        )
+
         self.clear_service = rospy.Service(
             constants.TOPIC_FACE_RECOGNITION+"/clear_face_data",
             remove_faces_data_srv,
@@ -217,9 +227,12 @@ class FaceDetectionService:
         if req.state:
             if self.active and self.sid is not None:
                 self.camera.unsubscribe(self.sid)
+            frames_interval = max(1, req.frames_interval)
             self.active = True
-            self.detection_interval = max(1, req.frames_interval)
-            self.sid = self.camera.subscribe(self.camera_subscriber, wait_turns=self.detection_interval)
+            self.detection_interval = frames_interval
+            self.sid = self.camera.subscribe(
+                self.camera_subscriber, wait_turns=self.detection_interval
+            )
             response.state = "Activated"
         else:
             self.active = False
@@ -245,6 +258,66 @@ class FaceDetectionService:
         
         rospy.loginfo(f"Triggered saving for: {self.save_name}, num_pics={self.save_count}, interval={self.save_interval}")
         return save_face_srvResponse(True)
+
+    def handle_get_face(self, req):
+        response = recognize_face_srvResponse()
+
+        if self.save_count > 0:
+            rospy.logwarn(
+                f"Face Detection: Get face requested while saving {self.save_name}."
+            )
+            response.approved = False
+            response.person = ""
+            return response
+
+        num_pics = req.num_pics if req.num_pics > 0 else 1
+        recognized_names = []
+        frames_collected = 0
+        finished = Event()
+
+        def collect_face_name(image: MatLike):
+            nonlocal frames_collected
+
+            if finished.is_set():
+                return
+
+            name = "Unknown"
+            try:
+                faces_data = DeepFace.extract_faces(image, enforce_detection=False)
+                center_face = self.get_face_closest_to_center(faces_data, image)
+                if center_face and center_face.get("confidence", 0) > 0.8:
+                    name = self.identify_face(center_face["face"])
+                    if not name or name == "Error":
+                        name = "Unknown"
+            except Exception as e:
+                rospy.logerr(f"Face Detection: get_face frame processing failed: {e}")
+
+            recognized_names.append(name)
+            frames_collected += 1
+            if frames_collected >= num_pics:
+                finished.set()
+
+        temp_sid = self.camera.subscribe(collect_face_name, wait_turns=1)
+        timeout = max(5.0, float(num_pics) * 2.0)
+        finished.wait(timeout=timeout)
+        self.camera.unsubscribe(temp_sid)
+
+        if not recognized_names:
+            response.approved = False
+            response.person = "Unknown"
+            return response
+
+        counts = Counter(recognized_names)
+        best_name = recognized_names[0]
+        best_count = counts[best_name]
+        for name in recognized_names[1:]:
+            if counts[name] > best_count:
+                best_name = name
+                best_count = counts[name]
+
+        response.approved = True
+        response.person = best_name
+        return response
 
     def handle_clear_embeddings(self, req):
         cursor, conn = self.connect_db()
